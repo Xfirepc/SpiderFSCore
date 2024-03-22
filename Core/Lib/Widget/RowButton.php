@@ -67,7 +67,7 @@ class RowButton extends VisualItem
         $this->type = $data['type'] ?? 'action';
     }
 
-    public function render(bool $small = false, string $viewName = '', string $jsFunction = ''): string
+    public function render(bool $small = true, string $viewName = '', string $jsFunction = ''): string
     {
         if ($this->getLevel() < $this->level) {
             return '';
@@ -77,8 +77,8 @@ class RowButton extends VisualItem
             $this->icon = 'far fa-question-circle';
         }
 
-        $cssClass = $small ? 'btn mr-1 ' : 'btn btn-sm mr-1 ';
-        $cssClass .= empty($this->color) ? 'btn-light' : $this->colorToClass($this->color, 'btn-');
+        $cssClass = $small ? 'btn btn-sm mr-1 ' : 'btn btn-sm mr-1 ';
+        $cssClass .= empty($this->color) ? 'btn-light' : $this->colorToClass($this  ->color, 'btn-');
         $divID = empty($this->id) ? '' : ' id="' . $this->id . '"';
         $title = empty($this->title) ? $this->label : $this->title;
 

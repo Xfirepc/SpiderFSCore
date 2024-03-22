@@ -111,6 +111,13 @@ abstract class ComercialContact extends Contact
     public $web;
 
     /**
+     * Address of the person.
+     *
+     * @var string
+     */
+    public $direccion;
+
+    /**
      * Return address from this contact.
      *
      * @return mixed

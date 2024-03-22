@@ -80,6 +80,11 @@ class BaseWidget extends VisualItem
     protected $value;
 
     /**
+     * @var string
+     */
+    public $widthCell;
+
+    /**
      * @param array $data
      */
     public function __construct($data)
@@ -89,6 +94,7 @@ class BaseWidget extends VisualItem
         $this->fieldname = $data['fieldname'];
         $this->icon = $data['icon'] ?? '';
         $this->onclick = $data['onclick'] ?? '';
+        $this->widthCell = $data['width'] ?? 'auto';
         $this->readonly = $data['readonly'] ?? 'false';
         $this->tabindex = intval($data['tabindex'] ?? '-1');
         $this->required = isset($data['required']) && strtolower($data['required']) === 'true';
@@ -207,8 +213,9 @@ class BaseWidget extends VisualItem
     public function tableCell($model, $display = 'left')
     {
         $this->setValue($model);
+        $width = $this->widthCell === 'auto' ? '' : ' style="width:' . $this->widthCell . ';"';
         $class = $this->combineClasses($this->tableCellClass('text-' . $display), $this->class);
-        return '<td class="' . $class . '">' . $this->onclickHtml($this->show()) . '</td>';
+        return '<td ' . $width . ' class="' . $class . '">' . $this->onclickHtml($this->show()) . '</td>';
     }
 
     /**

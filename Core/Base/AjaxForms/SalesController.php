@@ -47,7 +47,7 @@ abstract class SalesController extends PanelController
     const MAIN_VIEW_NAME = 'main';
     const MAIN_VIEW_TEMPLATE = 'Tab/SalesDocument';
 
-    private $logLevels = ['critical', 'error', 'info', 'notice', 'warning'];
+    public $logLevels = ['critical', 'error', 'info', 'notice', 'warning'];
 
     abstract public function getModelClassName();
 

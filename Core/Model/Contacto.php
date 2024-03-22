@@ -211,6 +211,8 @@ class Contacto extends Base\Contact
             $cliente->telefono1 = $this->telefono1;
             $cliente->telefono2 = $this->telefono2;
             $cliente->web = $this->web;
+            $cliente->direccion = $this->direccion;
+
             if ($cliente->save()) {
                 $this->codcliente = $cliente->codcliente;
                 $this->save();
@@ -242,6 +244,8 @@ class Contacto extends Base\Contact
             $proveedor->telefono1 = $this->telefono1;
             $proveedor->telefono2 = $this->telefono2;
             $proveedor->web = $this->web;
+            $proveedor->direccion = $this->direccion;
+
             if ($proveedor->save()) {
                 $this->codproveedor = $proveedor->codproveedor;
                 $this->save();
