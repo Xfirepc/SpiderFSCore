@@ -109,6 +109,11 @@ final class Kernel
         // inicializamos el antiguo traductor
         ToolBox::i18n()->setDefaultLang($lang);
 
+        // workers
+        WorkQueue::addWorker('CuentaWorker', 'Model.Cuenta.*');
+        WorkQueue::addWorker('CuentaWorker', 'Model.Subcuenta.*');
+        WorkQueue::addWorker('PartidaWorker', 'Model.Partida.*');
+
         self::stopTimer('kernel::init');
     }
 
@@ -250,6 +255,7 @@ final class Kernel
             '/' => 'Root',
             '/AdminPlugins' => 'AdminPlugins',
             '/api' => 'ApiRoot',
+            '/api/3/crearFacturaCliente' => 'ApiCreateFacturaCliente',
             '/api/*' => 'ApiRoot',
             '/Core/Assets/*' => 'Files',
             '/cron' => 'Cron',
@@ -263,12 +269,15 @@ final class Kernel
         ];
 
         foreach ($routes as $route => $controller) {
+            // si la ruta tiene *, la posición es 2, de lo contrario 1
+            $position = substr($route, -1) === '*' ? 2 : 1;
+
             if (class_exists('\\FacturaScripts\\Dinamic\\Controller\\' . $controller)) {
-                self::addRoute($route, '\\FacturaScripts\\Dinamic\\Controller\\' . $controller, 1);
+                self::addRoute($route, '\\FacturaScripts\\Dinamic\\Controller\\' . $controller, $position);
                 continue;
             }
 
-            self::addRoute($route, '\\FacturaScripts\\Core\\Controller\\' . $controller, 1);
+            self::addRoute($route, '\\FacturaScripts\\Core\\Controller\\' . $controller, $position);
         }
     }
 
@@ -276,8 +285,8 @@ final class Kernel
     {
         if ('' === Tools::config('db_name', '')) {
             self::addRoute('/', '\\FacturaScripts\\Core\\Controller\\Installer', 1);
-            self::addRoute('/Core/Assets/*', '\\FacturaScripts\\Core\\Controller\\Files', 1);
-            self::addRoute('/node_modules/*', '\\FacturaScripts\\Core\\Controller\\Files', 1);
+            self::addRoute('/Core/Assets/*', '\\FacturaScripts\\Core\\Controller\\Files', 2);
+            self::addRoute('/node_modules/*', '\\FacturaScripts\\Core\\Controller\\Files', 2);
             return;
         }
 
