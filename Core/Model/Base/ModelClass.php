@@ -106,19 +106,21 @@ abstract class ModelClass extends ModelCore
      */
     public function count(array $where = []): int
     {
+        $sql = 'SELECT COUNT(1) AS total FROM ' . static::tableName();
+
         if ($where) {
-            $sql = 'SELECT COUNT(1) AS total FROM ' . static::tableName() . DataBaseWhere::getSQLWhere($where);
-            $data = self::$dataBase->select($sql);
+            $data = self::$dataBase->select($sql . DataBaseWhere::getSQLWhere($where));
             return empty($data) ? 0 : (int)$data[0]['total'];
         }
 
         $key = 'model-' . $this->modelClassName() . '-count';
         $count = Cache::get($key);
         if (is_null($count)) {
-            $data = self::$dataBase->select('SELECT COUNT(1) AS total FROM ' . static::tableName());
+            $data = self::$dataBase->select($sql);
             $count = empty($data) ? 0 : (int)$data[0]['total'];
             Cache::set($key, $count);
         }
+
         return $count;
     }
 
@@ -127,7 +129,7 @@ abstract class ModelClass extends ModelCore
      *
      * @return bool
      */
-    public function delete()
+    public function delete(): bool
     {
         if (null === $this->primaryColumnValue()) {
             return true;
@@ -144,12 +146,16 @@ abstract class ModelClass extends ModelCore
             return false;
         }
 
-        Cache::delete('model-' . $this->modelClassName() . '-count');
+        Cache::deleteMulti('model-' . $this->modelClassName() . '-');
+        Cache::deleteMulti('join-model-');
+        Cache::deleteMulti('table-' . static::tableName() . '-');
+
         WorkQueue::send(
             'Model.' . $this->modelClassName() . '.Delete',
             $this->primaryColumnValue(),
             $this->toArray()
         );
+
         return $this->pipeFalse('delete');
     }
 
@@ -264,7 +270,7 @@ abstract class ModelClass extends ModelCore
      *
      * @return bool
      */
-    public function save()
+    public function save(): bool
     {
         if ($this->pipeFalse('saveBefore') === false) {
             return false;
@@ -284,6 +290,7 @@ abstract class ModelClass extends ModelCore
             $this->primaryColumnValue(),
             $this->toArray()
         );
+
         return $this->pipeFalse('save');
     }
 
@@ -293,7 +300,7 @@ abstract class ModelClass extends ModelCore
      *
      * @return bool
      */
-    public function test()
+    public function test(): bool
     {
         if ($this->pipeFalse('testBefore') === false) {
             return false;
@@ -318,6 +325,26 @@ abstract class ModelClass extends ModelCore
         }
 
         return $this->pipeFalse('test');
+    }
+
+    public function totalSum(string $field, array $where = []): float
+    {
+        $sql = 'SELECT SUM(' . self::$dataBase->escapeColumn($field) . ') AS total FROM ' . static::tableName();
+
+        if ($where) {
+            $data = self::$dataBase->select($sql . DataBaseWhere::getSQLWhere($where));
+            return empty($data) ? 0 : (int)$data[0]['total'];
+        }
+
+        $key = 'model-' . $this->modelClassName() . '-' . $field . '-total-sum';
+        $sum = Cache::get($key);
+        if (is_null($sum)) {
+            $data = self::$dataBase->select($sql);
+            $sum = empty($data) ? 0 : (float)$data[0]['total'];
+            Cache::set($key, $sum);
+        }
+
+        return $sum;
     }
 
     /**
@@ -360,7 +387,7 @@ abstract class ModelClass extends ModelCore
      *
      * @return bool
      */
-    protected function saveInsert(array $values = [])
+    protected function saveInsert(array $values = []): bool
     {
         if ($this->pipeFalse('saveInsertBefore') === false) {
             return false;
@@ -390,7 +417,10 @@ abstract class ModelClass extends ModelCore
             self::$dataBase->updateSequence(static::tableName(), $this->getModelFields());
         }
 
-        Cache::delete('model-' . $this->modelClassName() . '-count');
+        Cache::deleteMulti('model-' . $this->modelClassName() . '-');
+        Cache::deleteMulti('join-model-');
+        Cache::deleteMulti('table-' . static::tableName() . '-');
+
         WorkQueue::send(
             'Model.' . $this->modelClassName() . '.Insert',
             $this->primaryColumnValue(),
@@ -407,7 +437,7 @@ abstract class ModelClass extends ModelCore
      *
      * @return bool
      */
-    protected function saveUpdate(array $values = [])
+    protected function saveUpdate(array $values = []): bool
     {
         if ($this->pipeFalse('saveUpdateBefore') === false) {
             return false;
@@ -430,12 +460,16 @@ abstract class ModelClass extends ModelCore
             return false;
         }
 
-        Cache::delete('model-' . $this->modelClassName() . '-count');
+        Cache::deleteMulti('model-' . $this->modelClassName() . '-');
+        Cache::deleteMulti('join-model-');
+        Cache::deleteMulti('table-' . static::tableName() . '-');
+
         WorkQueue::send(
             'Model.' . $this->modelClassName() . '.Update',
             $this->primaryColumnValue(),
             $this->toArray()
         );
+
         return $this->pipeFalse('saveUpdate');
     }
 

@@ -110,9 +110,12 @@ final class Kernel
         ToolBox::i18n()->setDefaultLang($lang);
 
         // workers
-        WorkQueue::addWorker('CuentaWorker', 'Model.Cuenta.*');
-        WorkQueue::addWorker('CuentaWorker', 'Model.Subcuenta.*');
-        WorkQueue::addWorker('PartidaWorker', 'Model.Partida.*');
+        WorkQueue::addWorker('CuentaWorker', 'Model.Cuenta.Delete');
+        WorkQueue::addWorker('CuentaWorker', 'Model.Cuenta.Update');
+        WorkQueue::addWorker('CuentaWorker', 'Model.Subcuenta.Delete');
+        WorkQueue::addWorker('CuentaWorker', 'Model.Subcuenta.Update');
+        WorkQueue::addWorker('PartidaWorker', 'Model.Partida.Delete');
+        WorkQueue::addWorker('PartidaWorker', 'Model.Partida.Save');
 
         self::stopTimer('kernel::init');
     }
@@ -183,7 +186,10 @@ final class Kernel
 
     public static function startTimer(string $name): void
     {
-        self::$timers[$name] = ['start' => microtime(true)];
+        self::$timers[$name] = [
+            'start' => microtime(true),
+            'start_mem' => memory_get_usage(),
+        ];
     }
 
     public static function stopTimer(string $name): float
@@ -193,13 +199,14 @@ final class Kernel
         }
 
         self::$timers[$name]['stop'] = microtime(true);
+        self::$timers[$name]['stop_mem'] = memory_get_usage();
 
         return round(self::$timers[$name]['stop'] - self::$timers[$name]['start'], 5);
     }
 
     public static function version(): float
     {
-        return 2024.3;
+        return 2024.5;
     }
 
     private static function getErrorHandler(Exception $exception): ErrorControllerInterface
