@@ -59,9 +59,16 @@ class ListLogMessage extends ListController
             ->addOrderBy(['duration'], 'duration');
 
         // filtros
+        $this->addFilterPeriod($viewName, 'date', 'period', 'date', true);
+
         $plugins = $this->codeModel->all('cronjobs', 'pluginname', 'pluginname');
         $this->addFilterSelect($viewName, 'pluginname', 'plugin', 'pluginname', $plugins);
-        $this->addFilterPeriod($viewName, 'date', 'period', 'date', true);
+
+        $this->addFilterSelect($viewName, 'enabled', 'status', 'enabled', [
+            '' => '------',
+            '0' => Tools::lang()->trans('disabled'),
+            '1' => Tools::lang()->trans('enabled'),
+        ]);
 
         // desactivamos el botón nuevo
         $this->setSettings($viewName, 'btnNew', false);
@@ -127,22 +134,20 @@ class ListLogMessage extends ListController
             ->addOrderBy(['creation_date'], 'creation-date')
             ->addOrderBy(['done_date'], 'date')
             ->addOrderBy(['id'], 'id', 2)
-            ->addSearchFields(['name', 'value']);
-
-        // desactivamos el botón nuevo
-        $this->setSettings($viewName, 'btnNew', false);
+            ->addSearchFields(['name', 'value'])
+            ->setSettings('btnNew', false);
 
         // filtros
-        $this->addFilterPeriod($viewName, 'creation_date', 'period', 'creation_date', true);
-
-        $events = $this->codeModel->all('work_events', 'name', 'name');
-        $this->addFilterSelect($viewName, 'name', 'name', 'name', $events);
-
         $this->addFilterSelect($viewName, 'done', 'status', 'done', [
             '' => '------',
             '0' => Tools::lang()->trans('pending'),
             '1' => Tools::lang()->trans('done'),
         ]);
+
+        $events = $this->codeModel->all('work_events', 'name', 'name');
+        $this->addFilterSelect($viewName, 'name', 'name', 'name', $events);
+
+        $this->addFilterPeriod($viewName, 'creation_date', 'period', 'creation_date', true);
     }
 
     protected function deleteLogsAction(): void

@@ -327,7 +327,7 @@ abstract class BaseController extends Controller
 
         $results = [];
         foreach ($this->codeModel->all($data['source'], $data['fieldcode'], $data['fieldtitle'], false, $where) as $value) {
-            $results[] = ['key' => Tools::fixHtml($value->code), 'value' => Tools::fixHtml($value->description)];
+            $results[] = ['key' => $value->code, 'value' => $value->description];
         }
         return $results;
     }
@@ -476,7 +476,8 @@ abstract class BaseController extends Controller
 
         $results = [];
         foreach ($this->codeModel->all($data['source'], $data['fieldcode'], $data['fieldtitle'], !$required, $where) as $value) {
-            $results[] = ['key' => Tools::fixHtml($value->code), 'value' => Tools::fixHtml($value->description)];
+            // no usar fixHtml() aquí porque compromete la seguridad
+            $results[] = ['key' => $value->code, 'value' => $value->description];
         }
         return $results;
     }
