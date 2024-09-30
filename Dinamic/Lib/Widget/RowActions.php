@@ -4,6 +4,6 @@
  * Class created by Core/Base/PluginDeploy
  * @author FacturaScripts <carlos@facturascripts.com>
  */
-class RowActions extends \FacturaScripts\Core\Lib\Widget\RowActions
+class RowActions extends \FacturaScripts\Plugins\SpiderFact\Lib\Widget\RowActions
 {
 }
