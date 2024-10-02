@@ -43,6 +43,7 @@ abstract class ErrorController implements ErrorControllerInterface
 
     protected function html(string $title, string $bodyHtml, string $bodyCss): string
     {
+        $bodyCss = 'bg-light';
         return '<!doctype html>'
             . '<html lang="en">'
             . '<head>'

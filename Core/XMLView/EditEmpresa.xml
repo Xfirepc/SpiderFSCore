@@ -72,10 +72,10 @@
         </group>
         <group name="contact-data" numcolumns="12">
             <column name="phone" numcolumns="3" order="100">
-                <widget type="text" fieldname="telefono1" maxlength="30" icon="fas fa-phone"/>
+                <widget type="text" fieldname="telefono1" maxlength="30" icon="fas fa-mobile-alt"/>
             </column>
             <column name="phone2" numcolumns="3" order="110">
-                <widget type="text" fieldname="telefono2" maxlength="30" icon="fas fa-mobile-alt"/>
+                <widget type="text" fieldname="telefono2" maxlength="30" icon="fas fa-phone"/>
             </column>
             <column name="fax" numcolumns="3" order="120">
                 <widget type="text" fieldname="fax" maxlength="30" icon="fas fa-fax"/>
