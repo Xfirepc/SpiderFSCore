@@ -72,15 +72,6 @@ class CodeModel
      */
     public static function all(string $tableName, string $fieldCode, string $fieldDescription, bool $addEmpty = true, array $where = []): array
     {
-        // check cache
-        $cacheKey = $addEmpty ?
-            'table-' . $tableName . '-code-model-' . $fieldCode . '-' . $fieldDescription . '-empty' :
-            'table-' . $tableName . '-code-model-' . $fieldCode . '-' . $fieldDescription;
-        $result = Cache::get($cacheKey);
-        if (empty($where) && is_array($result)) {
-            return $result;
-        }
-
         // initialize
         $result = [];
         if ($addEmpty) {
@@ -107,11 +98,6 @@ class CodeModel
             . 'FROM ' . $tableName . DataBaseWhere::getSQLWhere($where) . ' ORDER BY 2 ASC';
         foreach (self::$dataBase->selectLimit($sql, self::getLimit()) as $row) {
             $result[] = new static($row);
-        }
-
-        // save cache
-        if (empty($where)) {
-            Cache::set($cacheKey, $result);
         }
 
         return $result;

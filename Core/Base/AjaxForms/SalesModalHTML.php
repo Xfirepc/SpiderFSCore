@@ -162,13 +162,6 @@ class SalesModalHTML
 
     protected static function getClientes(User $user, ControllerPermissions $permissions): array
     {
-        // buscamos en caché
-        $cacheKey = 'model-Cliente-sales-modal-' . $user->nick;
-        $clientes = Cache::get($cacheKey);
-        if (is_array($clientes)) {
-            return $clientes;
-        }
-
         // ¿El usuario tiene permiso para ver todos los clientes?
         $showAll = false;
         foreach (RoleAccess::allFromUser($user->nick, 'EditCliente') as $access) {
@@ -185,10 +178,6 @@ class SalesModalHTML
             $where[] = new DataBaseWhere('codagente', null, 'IS NOT');
         }
         $clientes = $cliente->all($where, ['LOWER(nombre)' => 'ASC']);
-
-        // guardamos en caché
-        Cache::set($cacheKey, $clientes);
-
         return $clientes;
     }
 

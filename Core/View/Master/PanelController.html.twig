@@ -110,7 +110,7 @@
             {% if fsc.views | length > 1 %}
                 <div class="col-lg-2">
                     {# -- Left tabs -- #}
-                    <div class="nav nav-pills flex-row flex-lg-column pb-3" id="mainTabs" role="tablist">
+                    <div class="nav nav-pills flex-row flex-lg-column pb-3 pt-3" id="mainTabs" role="tablist">
                         {% for viewName, view in fsc.views %}
                             {% set active = (viewName == fsc.active) ? ' active' : '' %}
                             {% set disable = view.settings.active ? '' : ' disabled' %}

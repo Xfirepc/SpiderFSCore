@@ -337,15 +337,7 @@ abstract class ModelClass extends ModelCore
             return empty($data) ? 0 : (float)$data[0]['total'];
         }
 
-        $key = 'model-' . $this->modelClassName() . '-' . $field . '-total-sum';
-        $sum = Cache::get($key);
-        if (is_null($sum)) {
-            $data = self::$dataBase->select($sql);
-            $sum = empty($data) ? 0 : (float)$data[0]['total'];
-            Cache::set($key, $sum);
-        }
-
-        return $sum;
+        return empty($data) ? 0 : (float)$data[0]['total'];;
     }
 
     /**
