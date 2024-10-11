@@ -47,7 +47,7 @@ abstract class PurchasesController extends PanelController
     const MAIN_VIEW_NAME = 'main';
     const MAIN_VIEW_TEMPLATE = 'Tab/PurchasesDocument';
 
-    private $logLevels = ['critical', 'error', 'info', 'notice', 'warning'];
+    public $logLevels = ['critical', 'error', 'info', 'notice', 'warning'];
 
     abstract public function getModelClassName();
 

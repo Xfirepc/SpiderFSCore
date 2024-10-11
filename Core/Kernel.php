@@ -92,9 +92,9 @@ final class Kernel
 
         // cargamos algunas constantes para dar soporte a versiones antiguas
         $constants = [
-            'FS_CODPAIS' => ['property' => 'codpais', 'default' => 'ESP'],
+            'FS_CODPAIS' => ['property' => 'codpais', 'default' => 'EC'],
             'FS_CURRENCY_POS' => ['property' => 'currency_position', 'default' => 'right'],
-            'FS_ITEM_LIMIT' => ['property' => 'item_limit', 'default' => 50],
+            'FS_ITEM_LIMIT' => ['property' => 'item_limit', 'default' => 100],
             'FS_NF0' => ['property' => 'decimals', 'default' => 2],
             'FS_NF1' => ['property' => 'decimal_separator', 'default' => ','],
             'FS_NF2' => ['property' => 'thousands_separator', 'default' => ' '],
@@ -106,7 +106,7 @@ final class Kernel
         }
 
         // cargamos el idioma almacenado en la cookie o el predeterminado
-        $lang = $_COOKIE['fsLang'] ?? Tools::config('lang', 'es_ES');
+        $lang = $_COOKIE['fsLang'] ?? Tools::config('lang', 'es_EC');
         Translator::setDefaultLang($lang);
 
         // inicializamos el antiguo traductor

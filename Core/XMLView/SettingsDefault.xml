@@ -48,12 +48,12 @@
                 </widget>
             </column>
             <column name="serie" numcolumns="3" order="140">
-                <widget type="select" fieldname="codserie" onclick="EditSerie" required="true">
+                <widget type="select" fieldname="codserie" onclick="EditSerie">
                     <values/>
                 </widget>
             </column>
             <column name="rectifying-serie" numcolumns="3" order="150">
-                <widget type="select" fieldname="codserierec" onclick="EditSerie" required="true">
+                <widget type="select" fieldname="codserierec" onclick="EditSerie">
                     <values/>
                 </widget>
             </column>

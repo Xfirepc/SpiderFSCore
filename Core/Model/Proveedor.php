@@ -237,6 +237,8 @@ class Proveedor extends Base\ComercialContact
             $contact->telefono1 = $this->telefono1;
             $contact->telefono2 = $this->telefono2;
             $contact->tipoidfiscal = $this->tipoidfiscal;
+            $contact->direccion = $this->direccion;
+
             if ($contact->save()) {
                 $this->idcontacto = $contact->idcontacto;
                 return $this->save();

@@ -27,11 +27,14 @@ use FacturaScripts\Core\Tools;
 use FacturaScripts\Core\WorkQueue;
 
 require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/proxy.php';
 
 // cargamos la configuración
 const FS_FOLDER = __DIR__;
-if (file_exists(__DIR__ . '/config.php')) {
-    require_once __DIR__ . '/config.php';
+$configFile = getConfigFile();
+
+if (file_exists($configFile)) {
+    require_once $configFile;
 }
 
 // desactivamos el tiempo de ejecución y el aborto de la conexión
@@ -39,7 +42,7 @@ if (file_exists(__DIR__ . '/config.php')) {
 ignore_user_abort(true);
 
 // establecemos la zona horaria
-$timeZone = Tools::config('timezone', 'Europe/Madrid');
+$timeZone = Tools::config('timezone', 'America/Guayaquil');
 date_default_timezone_set($timeZone);
 
 // cargamos el gestor de errores

@@ -87,7 +87,7 @@
             <div class="col-md d-none d-md-inline-block text-right">
                 {% set image = fsc.getImageUrl() %}
                 {% if image is empty %}
-                    <i class="{{ pageData.icon }} fa-3x pl-3 float-right" aria-hidden="true"></i>
+                    <i class="{{ pageData.icon }} fa-2x pl-3 float-right" aria-hidden="true"></i>
                 {% else %}
                     <img src="{{ image }}" alt="{{ fsc.title }}" class="img-thumbnail ml-3 mb-2 float-right"/>
                 {% endif %}
@@ -119,7 +119,7 @@
                                 <i class="{{ view.icon }} fa-fw mr-1 d-none d-xl-inline-block"
                                    aria-hidden="true"></i>{{ view.title }}
                                 {% if view.count >= 1 and viewName != firstView.getViewName() %}
-                                    <span class='badge badge-secondary mt-lg-1 mb-lg-1 float-lg-right'>{{ view.count }}</span>
+                                    <span class='badge badge-primary mt-lg-1 mb-lg-1 float-lg-right'>{{ view.count }}</span>
                                 {% endif %}
                             </a>
                         {% endfor %}

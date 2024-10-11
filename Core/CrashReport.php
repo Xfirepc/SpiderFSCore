@@ -1,21 +1,4 @@
 <?php
-/**
- * This file is part of FacturaScripts
- * Copyright (C) 2023-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 
 namespace FacturaScripts\Core;
 
@@ -119,18 +102,18 @@ final class CrashReport
             . '<head>'
             . '<meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            . '<title>Fatal error #' . $info['code'] . '</title>'
+            . '<title>Ha ocurrido un problema #' . $info['code'] . '</title>'
             . '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"'
             . ' integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">'
             . '</head>'
-            . '<body class="bg-danger">'
+            . '<body class="bg-light">'
             . '<div class="container mt-5 mb-5">'
             . '<div class="row justify-content-center">'
             . '<div class="col-sm-6">'
             . '<div class="card shadow">'
             . '<div class="card-body">'
             . '<img src="' . $info['report_qr'] . '" alt="' . $info['hash'] . '" class="float-end">'
-            . '<h1 class="mt-0">Fatal error #' . $info['code'] . '</h1>'
+            . '<h3 class="mt-0">Ha ocurrido un problema #' . $info['code'] . '</h3>'
             . '<p>' . nl2br($messageParts[0]) . '</p>'
             . '<p class="mb-0"><b>Url</b>: ' . $info['url'] . '</p>';
 
@@ -171,25 +154,15 @@ final class CrashReport
             echo '</tbody></table></div>';
         }
 
+        $url_message = static::generateFormattedMsg($info);
         echo '<div class="card-footer p-2">'
             . '<div class="row">'
             . '<div class="col">'
-            . '<form method="post" action="' . $info['report_url'] . '" target="_blank">'
-            . '<input type="hidden" name="error_code" value="' . $info['code'] . '">'
-            . '<input type="hidden" name="error_message" value="' . $info['message'] . '">'
-            . '<input type="hidden" name="error_file" value="' . $info['file'] . '">'
-            . '<input type="hidden" name="error_line" value="' . $info['line'] . '">'
-            . '<input type="hidden" name="error_hash" value="' . $info['hash'] . '">'
-            . '<input type="hidden" name="error_url" value="' . $info['url'] . '">'
-            . '<input type="hidden" name="error_core_version" value="' . $info['core_version'] . '">'
-            . '<input type="hidden" name="error_plugin_list" value="' . $info['plugin_list'] . '">'
-            . '<input type="hidden" name="error_php_version" value="' . $info['php_version'] . '">'
-            . '<input type="hidden" name="error_os" value="' . $info['os'] . '">'
-            . '<button type="submit" class="btn btn-secondary">' . self::trans('to-report') . '</button>'
-            . '</form>'
+            . '<a class="btn btn-dark" href="'.$url_message.'" target="_blank">
+               ' . self::trans('to-report') . '</a>'
             . '</div>';
 
-        if (false === Tools::config('disable_deploy_actions', false)) {
+        if (Tools::config('debug', false)) {
             echo '<div class="col-auto">'
                 . '<a href="' . Tools::config('route') . '/deploy?action=disable-plugins&token=' . self::newToken()
                 . '" class="btn btn-light">' . self::trans('disable-plugins') . '</a> '
@@ -237,6 +210,16 @@ final class CrashReport
                 'disable-plugins' => 'Desactivar plugins',
                 'rebuild' => 'Reconstruir',
             ],
+            'es_EC' => [
+                'to-report' => 'Enviar informe',
+                'disable-plugins' => 'Desactivar plugins',
+                'rebuild' => 'Reconstruir',
+            ],
+            'en_US' => [
+                'to-report' => 'Send report',
+                'disable-plugins' => 'Disable plugins',
+                'rebuild' => 'Rebuild',
+            ],
         ];
 
         return $translations[FS_LANG][$code] ?? $code;
@@ -260,7 +243,7 @@ final class CrashReport
             // marcamos la línea del error
             if ($index === $line) {
                 $errorFragment[$index] = '<spam style="padding-top: 0.1rem; padding-bottom: 0.1rem; '
-                    . 'background-color: red; color: white">' . $index . $value . '</spam>';
+                    . 'background-color: #951414; color: white">' . $index . $value . '</spam>';
                 continue;
             }
 
@@ -269,4 +252,22 @@ final class CrashReport
 
         return implode("\n", $errorFragment);
     }
+
+    public static function generateFormattedMsg($info)
+    {
+        $msg = "Hola, he tenido un problema desde " . $_SERVER['HTTP_HOST'];
+        $msg .= "\n\n *URL:* " . $info['url'];
+        $msg .= "\n *Mensaje:* " . $info['message'];
+        $msg .= "\n *Archivo:* " . $info['file'];
+        $msg .= "\n *Linea:* " . $info['line'];
+        $msg .= "\n *Hash:* " . $info['hash'];
+        $msg .= "\n *Core:* " . $info['core_version'];
+        $msg .= "\n *Plugins:* " . $info['plugin_list'];
+        $msg .= "\n *PHP:* " . $info['php_version'];
+        $msg .= "\n *OS:* " . $info['os'];
+
+        $url_report = 'https://api.whatsapp.com/send?phone=593987035780&text=' . urlencode($msg);
+        return $url_report;
+    }
+
 }
