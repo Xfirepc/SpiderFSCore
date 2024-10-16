@@ -669,15 +669,11 @@ class Tools
             return;
         }
 
-        self::$settings = Cache::remember('tools-settings', function () {
-            $settings = [];
-
-            $model = new Settings();
-            foreach ($model->all([], [], 0, 0) as $item) {
-                $settings[$item->name] = $item->properties;
-            }
-
-            return $settings;
-        });
+        $settings = [];
+        $model = new Settings();
+        foreach ($model->all([], [], 0, 0) as $item) {
+            $settings[$item->name] = $item->properties;
+        }
+        self::$settings = $settings;
     }
 }

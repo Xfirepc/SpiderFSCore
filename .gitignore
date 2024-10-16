@@ -20,7 +20,7 @@ error.log
 .buildpath
 .project
 .settings
-
+/Config/
 # netbeans
 /nbproject/
 

@@ -1,15 +1,16 @@
 <?php
 
-// Buscar la variable de Cookies con el RUC de la DB
-
 function getConfigFile() {
-    $configFile = __DIR__ . '/config.php';
 
     if (!empty($_COOKIE['ruc'])) {
-        $configFile = __DIR__ . '/Config/config_' . $_COOKIE['ruc'] . '.php';
+        return __DIR__ . '/Config/config_' . $_COOKIE['ruc'] . '.php';
     }
 
-    return $configFile;
+    if (!empty($_SERVER['HTTP_X_RUC'])) {
+        return __DIR__ . '/Config/config_' . $_SERVER['HTTP_X_RUC'] . '.php';
+    }
+
+    return __DIR__ . '/config.php';;
 }
 
 
