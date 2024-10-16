@@ -23,6 +23,9 @@ function animateSpinner(animation, result = null) {
         $("a.btn-spin-action").addClass('disabled').attr('aria-disabled', true);
 
         setToast('', 'spinner', '', 0);
+        setTimeout(function () {
+            animateSpinner('remove', true);
+        }, 5000);
         return;
     }
 

@@ -11,7 +11,7 @@ define('FS_TIMEZONE', 'America/Guayaquil');
 define('FS_DB_TYPE', 'mysql');
 define('FS_DB_HOST', 'mysql');
 define('FS_DB_PORT', '3306');
-define('FS_DB_NAME', '1718429184001_');
+define('FS_DB_NAME', 'multispider');
 define('FS_DB_USER', 'root');
 define('FS_DB_PASS', 'root');
 define('FS_CACHE_HOST', '');
