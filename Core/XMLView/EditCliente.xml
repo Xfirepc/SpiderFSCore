@@ -25,23 +25,23 @@
             <column name="code" description="optional" display="none" numcolumns="2" order="100">
                 <widget type="text" fieldname="codcliente" icon="fas fa-hashtag" maxlength="10" readonly="dinamic"/>
             </column>
-            <column name="name" description="desc-customer-name" order="110">
-                <widget type="text" fieldname="nombre" maxlength="100" required="true"/>
-            </column>
-            <column name="fiscal-mode" title="type" numcolumns="2" order="120">
-                <widget type="select" fieldname="personafisica" translate="true" required="true">
-                    <values title="is-person">1</values>
-                    <values title="company">0</values>
-                </widget>
+            <column name="fiscal-number" numcolumns="2" order="110">
+                <widget type="text" fieldname="cifnif" maxlength="30"/>
             </column>
             <column name="fiscal-id" titleurl="EditSettings?activetab=EditIdentificadorFiscal" numcolumns="2"
-                    order="130">
+                    order="110">
                 <widget type="select" fieldname="tipoidfiscal" required="true">
                     <values source="idsfiscales" fieldcode="tipoidfiscal" fieldtitle="tipoidfiscal"/>
                 </widget>
             </column>
-            <column name="fiscal-number" numcolumns="2" order="140">
-                <widget type="text" fieldname="cifnif" maxlength="30"/>
+            <column name="name" description="desc-customer-name" order="110">
+                <widget type="text" fieldname="nombre" maxlength="100" required="true"/>
+            </column>
+            <column name="fiscal-mode" title="type" numcolumns="2" order="110">
+                <widget type="select" fieldname="personafisica" translate="true" required="true">
+                    <values title="is-person">1</values>
+                    <values title="company">0</values>
+                </widget>
             </column>
         </group>
         <group name="contact" title="contact-info" numcolumns="12">
