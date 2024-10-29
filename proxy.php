@@ -1,16 +1,14 @@
 <?php
 
 function getConfigFile() {
-
-    if (!empty($_COOKIE['ruc'])) {
-        return __DIR__ . '/Config/config_' . $_COOKIE['ruc'] . '.php';
+    $ruc = $_COOKIE['ruc'] ?? $_SERVER['HTTP_X_RUC'] ?? null;
+    if ($ruc) {
+        $configPath = __DIR__ . '/Config/config_' . $ruc . '.php';
+        if (file_exists($configPath)) {
+            return $configPath;
+        }
     }
 
-    if (!empty($_SERVER['HTTP_X_RUC'])) {
-        return __DIR__ . '/Config/config_' . $_SERVER['HTTP_X_RUC'] . '.php';
-    }
-
-    return __DIR__ . '/config.php';;
+    return __DIR__ . '/config.php';
 }
-
 

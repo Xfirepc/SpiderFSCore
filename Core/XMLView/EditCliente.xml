@@ -51,17 +51,20 @@
             <column name="billing-address" numcolumns="3" order="100">
                 <widget type="select" fieldname="idcontactofact" onclick="EditContacto"/>
             </column>
-            <column name="phone" numcolumns="2" order="110">
+            <column name="phone" numcolumns="3" order="110">
                 <widget type="text" fieldname="telefono1" maxlength="30" icon="fas fa-mobile-alt"/>
             </column>
-            <column name="phone2" numcolumns="2" order="120">
+            <column name="phone2" numcolumns="3" order="120">
                 <widget type="text" fieldname="telefono2" maxlength="30" icon="fas fa-phone"/>
             </column>
             <column name="fax" display="none" numcolumns="2" order="130">
                 <widget type="text" fieldname="fax" maxlength="30" icon="fas fa-fax"/>
             </column>
-            <column name="email" numcolumns="2" order="140">
+            <column name="email" numcolumns="3" order="140">
                 <widget type="email" fieldname="email" maxlength="100" icon="fas fa-envelope"/>
+            </column>
+            <column name="address" numcolumns="9" order="140">
+                <widget type="text" fieldname="direccion" maxlength="100" icon="fas fa-map-marked" required="true"/>
             </column>
             <column name="shipping-address" numcolumns="3" order="150">
                 <widget type="select" fieldname="idcontactoenv" onclick="EditContacto"/>
