@@ -25,7 +25,7 @@ function animateSpinner(animation, result = null) {
         setToast('', 'spinner', '', 0);
         setTimeout(function () {
             animateSpinner('remove', true);
-        }, 5000);
+        }, 10000);
         return;
     }
 
