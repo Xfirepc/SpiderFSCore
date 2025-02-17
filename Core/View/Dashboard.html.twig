@@ -52,36 +52,36 @@
             </div>
         {% endblock %}
         {% if fsc.showBackupWarning() %}
-            <div class="row">
-                <div class="col">
-                    <div class="card bg-warning shadow mb-3">
-                        <div class="card-body">
-                            <div class="h3">
-                                <i class="fas fa-save mr-1"></i> {{ trans('dashboard-backup') }}
-                            </div>
-                            <p class="card-text">{{ trans('dashboard-backup-p') }}</p>
-                            <ul class="mb-0">
-                                <li>{{ trans('dasboard-backup-li1') }}</li>
-                                <li>{{ trans('dasboard-backup-li2') }}</li>
-                                <li>{{ trans('dasboard-backup-li3') }}</li>
-                            </ul>
-                        </div>
-                        <div class="card-footer p-2">
-                            <a href="https://facturascripts.com/plugins/backup" target="_blank" rel="nofollow"
-                               class="btn btn-secondary"> Backup
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% elseif fsc.updated == false %}
-            <div class="mb-3">
-                {{ Utils.updateInstall() }}
-            </div>
-        {% elseif fsc.registered == false %}
-            <div class="mb-3">
-                {{ Utils.registerInstall() }}
-            </div>
+{#            <div class="row">#}
+{#                <div class="col">#}
+{#                    <div class="card bg-warning shadow mb-3">#}
+{#                        <div class="card-body">#}
+{#                            <div class="h3">#}
+{#                                <i class="fas fa-save mr-1"></i> {{ trans('dashboard-backup') }}#}
+{#                            </div>#}
+{#                            <p class="card-text">{{ trans('dashboard-backup-p') }}</p>#}
+{#                            <ul class="mb-0">#}
+{#                                <li>{{ trans('dasboard-backup-li1') }}</li>#}
+{#                                <li>{{ trans('dasboard-backup-li2') }}</li>#}
+{#                                <li>{{ trans('dasboard-backup-li3') }}</li>#}
+{#                            </ul>#}
+{#                        </div>#}
+{#                        <div class="card-footer p-2">#}
+{#                            <a href="https://facturascripts.com/plugins/backup" target="_blank" rel="nofollow"#}
+{#                               class="btn btn-secondary"> Backup#}
+{#                            </a>#}
+{#                        </div>#}
+{#                    </div>#}
+{#                </div>#}
+{#            </div>#}
+{#        {% elseif fsc.updated == false %}#}
+{#            <div class="mb-3">#}
+{#                {{ Utils.updateInstall() }}#}
+{#            </div>#}
+{#        {% elseif fsc.registered == false %}#}
+{#            <div class="mb-3">#}
+{#                {{ Utils.registerInstall() }}#}
+{#            </div>#}
         {% endif %}
         {% block sectionStats %}
             {{ _self.sectionStats(fsc) }}
@@ -97,7 +97,7 @@
                     {% endif %}
                 </div>
             </div>
-            {{ _self.sectionNews(fsc) }}
+{#            {{ _self.sectionNews(fsc) }}#}
         {% endblock %}
     </div>
 {% endblock %}
@@ -131,7 +131,7 @@
     <div class="card shadow mb-3">
         <div class="pl-3 pt-1 pr-3 pb-3">
             <div class="form-row">
-                <div class="col-md">
+                <div class="col-md-3">
                     <h2 class="h4 mt-3 mb-1">
                         <i class="fas fa-plus fa-fw"></i> {{ trans('create') }}
                     </h2>
@@ -159,11 +159,15 @@
                         </ul>
                     </div>
                 {% endif %}
-                <div class="col-md">
+                <div class="col-md-3">
                     <h2 class="h4 mt-3 mb-1">
                         <i class="fas fa-question-circle fa-fw"></i> {{ trans('help') }}
                     </h2>
                     <ul class="mb-1">
+                        <li>
+                            <a href="https://wa.link/ubiy13" rel="nofollow"
+                               target="_blank">Soporte técnico</a>
+                        </li>
                         <li>
                             <a href="https://facturascripts.com/publicaciones/configuracion-15" rel="nofollow"
                                target="_blank">Configuración</a>
@@ -181,10 +185,6 @@
                                target="_blank">Encuesta de uso 2024/25
                                 <i class="fas fa-clipboard-check"></i>
                             </a>
-                        </li>
-                        <li>
-                            <a href="https://facturascripts.com/contacto" rel="nofollow" target="_blank">Soporte
-                                <i class="far fa-comment-dots"></i></a>
                         </li>
                     </ul>
                 </div>

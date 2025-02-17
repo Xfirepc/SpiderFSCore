@@ -106,6 +106,8 @@ class FacturaCliente extends Base\SalesDocument
 
     protected function testDate(): bool
     {
+        // TODO: Study if this is necessary
+        return true;
         // prevent form using old dates
         $numColumn = strtolower(FS_DB_TYPE) == 'postgresql' ? 'CAST(numero as integer)' : 'CAST(numero as unsigned)';
         $whereOld = [
