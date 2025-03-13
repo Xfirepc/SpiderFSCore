@@ -36,6 +36,7 @@ $configFile = getConfigFile();
 if (file_exists($configFile)) {
     require_once $configFile;
 }
+define('SYS_VERSION', 'v1.1.0');
 
 // desactivamos el tiempo de ejecución y el aborto de la conexión
 @set_time_limit(0);
