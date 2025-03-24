@@ -336,7 +336,7 @@
     "created-by": "Creado por",
     "created-default-admin-account": "Se ha creado el usuario %nick% con la contraseña %pass%",
     "creation-date": "Fecha de creación",
-    "credit": "abonar",
+    "credit": "Abono",
     "crm": "CRM",
     "cron-job": "Tarea programada",
     "cron-timeout": "El cron se ha detenido para no superar el tiempo máximo de ejecución de PHP. Por favor, ejecuta el cron desde terminal para evitar este límite.",
