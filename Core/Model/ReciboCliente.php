@@ -20,6 +20,7 @@
 namespace FacturaScripts\Core\Model;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Lib\CustomerRiskTools;
 use FacturaScripts\Dinamic\Model\Cliente as DinCliente;
 use FacturaScripts\Dinamic\Model\FacturaCliente as DinFacturaCliente;
@@ -36,6 +37,9 @@ class ReciboCliente extends Base\Receipt
 
     /** @var string */
     public $codcliente;
+
+    /** @var string */
+    public $codcuentabanco;
 
     /** @var float */
     public $gastos;
@@ -179,5 +183,68 @@ class ReciboCliente extends Base\Receipt
             $customer->riesgoalcanzado = CustomerRiskTools::getCurrent($customer->primaryColumnValue());
             $customer->save();
         }
+    }
+
+    /**
+     * Returns the bank account associated with this receipt
+     * 
+     * @return CuentaBanco|null
+     */
+    public function getBankAccount(): ?CuentaBanco
+    {
+        if (empty($this->codcuentabanco)) {
+            return null;
+        }
+
+        $bank = new CuentaBanco();
+        $bank->loadFromCode($this->codcuentabanco);
+        return $bank;
+    }
+
+    /**
+     * Returns the bank account subaccount for this receipt
+     * 
+     * @param string $codejercicio
+     * @param bool $create
+     * @return Subcuenta
+     */
+    public function getBankSubaccount(string $codejercicio, bool $create = false): Subcuenta
+    {
+        $bank = $this->getBankAccount();
+        if ($bank === null) {
+            return new Subcuenta();
+        }
+
+        return $bank->getSubcuenta($codejercicio, $create);
+    }
+
+    /**
+     * Returns the bank account expenses subaccount for this receipt
+     * 
+     * @param string $codejercicio
+     * @param bool $create
+     * @return Subcuenta
+     */
+    public function getBankExpensesSubaccount(string $codejercicio, bool $create = false): Subcuenta
+    {
+        $bank = $this->getBankAccount();
+        if ($bank === null) {
+            return new Subcuenta();
+        }
+
+        return $bank->getSubcuentaGastos($codejercicio, $create);
+    }
+
+    public function test(): bool
+    {
+        if (empty($this->idempresa)) {
+            $this->idempresa = Tools::settings('default', 'idempresa');
+        }
+
+        $this->codcliente = Tools::noHtml($this->codcliente);
+        $this->codcuentabanco = Tools::noHtml($this->codcuentabanco);
+        $this->gastos = (float)$this->gastos;
+
+        return parent::test();
     }
 }

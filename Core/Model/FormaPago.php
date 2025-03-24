@@ -23,7 +23,6 @@ use FacturaScripts\Core\DataSrc\FormasPago;
 use FacturaScripts\Core\Model\Base\ModelClass;
 use FacturaScripts\Core\Model\Base\ModelTrait;
 use FacturaScripts\Core\Tools;
-use FacturaScripts\Dinamic\Model\CuentaBanco as DinCuentaBanco;
 
 /**
  * Payment method of an invoice, delivery note, order or estimation.
@@ -36,9 +35,6 @@ class FormaPago extends ModelClass
 
     /** @var bool */
     public $activa;
-
-    /** @var string */
-    public $codcuentabanco;
 
     /** @var string */
     public $codpago;
@@ -91,28 +87,6 @@ class FormaPago extends ModelClass
     }
 
     /**
-     * Return the bank account.
-     *
-     * @return DinCuentaBanco
-     */
-    public function getBankAccount(): CuentaBanco
-    {
-        $bank = new DinCuentaBanco();
-        $bank->loadFromCode($this->codcuentabanco);
-        return $bank;
-    }
-
-    public function getSubcuenta(string $codejercicio, bool $create): Subcuenta
-    {
-        return $this->getBankAccount()->getSubcuenta($codejercicio, $create);
-    }
-
-    public function getSubcuentaGastos(string $codejercicio, bool $create): Subcuenta
-    {
-        return $this->getBankAccount()->getSubcuentaGastos($codejercicio, $create);
-    }
-
-    /**
      * Returns the date with the expiration term applied.
      *
      * @param string $date
@@ -127,7 +101,7 @@ class FormaPago extends ModelClass
     public function install(): string
     {
         // needed dependencies
-        new CuentaBanco();
+        new Empresa();
 
         return parent::install();
     }

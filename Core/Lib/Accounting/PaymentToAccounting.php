@@ -125,9 +125,15 @@ class PaymentToAccounting
 
     protected function customerPaymentBankLine(Asiento &$entry): bool
     {
-        $account = $this->payment->getPaymentMethod()->getSubcuenta($this->exercise->codejercicio, true);
+        // Intentamos obtener la cuenta bancaria del recibo
+        $account = $this->receipt->getBankSubaccount($this->exercise->codejercicio, true);
+        
+        // Si no hay cuenta bancaria en el recibo, usamos la de la forma de pago como fallback
         if (false === $account->exists()) {
-            return false;
+            $account = $this->payment->getPaymentMethod()->getSubcuenta($this->exercise->codejercicio, true);
+            if (false === $account->exists()) {
+                return false;
+            }
         }
 
         $amount = $this->payment->importe + abs($this->payment->gastos);
@@ -144,7 +150,13 @@ class PaymentToAccounting
             return true;
         }
 
-        $account = $this->payment->getPaymentMethod()->getSubcuentaGastos($this->exercise->codejercicio, true);
+        // Intentamos obtener la cuenta de gastos del banco del recibo
+        $account = $this->receipt->getBankExpensesSubaccount($this->exercise->codejercicio, true);
+        
+        // Si no hay cuenta de gastos en el banco del recibo, usamos la de la forma de pago como fallback
+        if (false === $account->exists()) {
+            $account = $this->payment->getPaymentMethod()->getSubcuentaGastos($this->exercise->codejercicio, true);
+        }
 
         $expLine = $entry->getNewLine($account);
         $expLine->concepto = Tools::lang()->trans('receipt-expense-account', ['%document%' => $entry->documento]);
@@ -200,9 +212,15 @@ class PaymentToAccounting
 
     protected function supplierPaymentBankLine(Asiento &$entry): bool
     {
-        $account = $this->payment->getPaymentMethod()->getSubcuenta($this->exercise->codejercicio, true);
+        // Intentamos obtener la cuenta bancaria del recibo
+        $account = $this->receipt->getBankSubaccount($this->exercise->codejercicio, true);
+        
+        // Si no hay cuenta bancaria en el recibo, usamos la de la forma de pago como fallback
         if (false === $account->exists()) {
-            return false;
+            $account = $this->payment->getPaymentMethod()->getSubcuenta($this->exercise->codejercicio, true);
+            if (false === $account->exists()) {
+                return false;
+            }
         }
 
         $newLine = $entry->getNewLine($account);

@@ -69,6 +69,11 @@
                     <values source="formaspago" fieldcode="codpago" fieldtitle="descripcion" fieldfilter="idempresa"/>
                 </widget>
             </column>
+            <column name="bank-account" order="125">
+                <widget type="select" fieldname="codcuentabanco" parent="idempresa" onclick="EditCuentaBanco">
+                    <values source="cuentasbanco" fieldcode="codcuenta" fieldtitle="descripcion" fieldfilter="idempresa"/>
+                </widget>
+            </column>
             <column name="paid" order="130">
                 <widget type="checkbox" fieldname="pagado"/>
             </column>

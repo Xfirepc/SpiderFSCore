@@ -47,19 +47,11 @@
                     <values source="empresas" fieldcode="idempresa" fieldtitle="nombrecorto"/>
                 </widget>
             </column>
-            <column name="bank-account" numcolumns="3" titleurl="ListFormaPago?activetab=ListCuentaBanco" order="110">
-                <widget type="select" fieldname="codcuentabanco" onclick="EditCuentaBanco" parent="idempresa">
-                    <values source="cuentasbanco" fieldcode="codcuenta" fieldtitle="descripcion" fieldfilter="idempresa"/>
-                </widget>
-            </column>
             <column name="domiciled" numcolumns="2" order="120">
                 <widget type="checkbox" fieldname="domiciliado"/>
             </column>
             <column name="paid" numcolumns="2" order="130">
                 <widget type="checkbox" fieldname="pagado"/>
-            </column>
-            <column name="print-bank-data" numcolumns="2" order="140">
-                <widget type="checkbox" fieldname="imprimir"/>
             </column>
         </group>
     </columns>
