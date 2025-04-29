@@ -421,4 +421,20 @@ class Variante extends Base\ModelClass
 
         return true;
     }
+
+    public function newCode(string $field = '', array $where = []):int 
+    {
+        if (empty($field)) {
+            $field = static::primaryColumn();
+        }
+
+        $code = time();
+        $where = [new DataBaseWhere($field, $code)];
+        if ($this->count($where) > 0)
+            $code = $code + 1;
+
+        return $code;
+
+    }
+
 }
