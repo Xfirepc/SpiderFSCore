@@ -232,7 +232,7 @@ class Controller implements ControllerInterface
         $this->multiRequestProtection->addSeed($user->nick);
 
         // Have this user a default page?
-        $defaultPage = $this->request->query->get('defaultPage', '');
+        $defaultPage = $this->request->query->get('defaultPage', '/Dashboard');
         if ($defaultPage === 'TRUE') {
             $this->user->homepage = $this->className;
             $this->response->headers->setCookie(

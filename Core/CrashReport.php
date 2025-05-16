@@ -162,15 +162,6 @@ final class CrashReport
                ' . self::trans('to-report') . '</a>'
             . '</div>';
 
-        if (Tools::config('debug', false)) {
-            echo '<div class="col-auto">'
-                . '<a href="' . Tools::config('route') . '/deploy?action=disable-plugins&token=' . self::newToken()
-                . '" class="btn btn-light">' . self::trans('disable-plugins') . '</a> '
-                . '<a href="' . Tools::config('route') . '/deploy?action=rebuild&token=' . self::newToken()
-                . '" class="btn btn-light">' . self::trans('rebuild') . '</a> '
-                . '</div>';
-        }
-
         echo '</div>'
             . '</div>'
             . '</div>'

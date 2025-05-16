@@ -136,6 +136,7 @@ class Updater extends Controller
      */
     private function downloadAction(): void
     {
+        return;
         $idItem = $this->request->get('item', '');
         $this->updaterItems = self::getUpdateItems();
         foreach ($this->updaterItems as $key => $item) {
@@ -171,6 +172,7 @@ class Updater extends Controller
 
     protected function execAction(string $action): void
     {
+        return;
         switch ($action) {
             case 'cancel':
                 $this->cancelAction();
