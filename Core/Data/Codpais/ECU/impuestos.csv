@@ -1,5 +1,9 @@
-codimpuesto,descripcion,iva,recargo
-IVA12,"IVA General 12%",12,0
-IVA0,"Tasa Cero",0,0
-IVA14,"IVA Especial 14%",14,0
-IVADIF,"Impuesto Diferenciado",10,0.5
+"activo","codimpuesto","codsubcuentarep","codsubcuentarepre","codsubcuentasop","codsubcuentasopre","descripcion","tipo","iva","recargo","codigo","codigoPorcentaje"
+1,"EXIV","","","","","Exento de IVA",1,0,0,"2","7"
+1,"IVA0","","","","","IVA 0%",1,0,0,"2","0"
+1,"IVA12","","","","","IVA 12%",1,12,0,"2","2"
+1,"IVA13","","","","","IVA 13%",1,13,0,"2","10"
+1,"IVA14","","","","","IVA 14%",1,14,0,"2","3"
+1,"IVA15","","","","","IVA 15%",1,15,0,"2","4"
+1,"IVA5","","","","","IVA 5%",1,5,0,"2","5"
+1,"NODI","","","","","No Objeto de Impuesto",1,0,0,"2","6"

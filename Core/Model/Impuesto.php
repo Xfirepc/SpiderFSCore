@@ -189,6 +189,14 @@ class Impuesto extends ModelClass
 
     protected function getSpecialSubAccount(string $codejercicio, string $codcuentaesp): DinSubcuenta
     {
+
+        // $cuentaEsp = new CuentaEspecial();
+        // $whereCuentaEsp = [
+        //     new DataBaseWhere('codcuentaesp', $codcuentaesp),
+        // ];
+        // if ($cuentaEsp->loadFromCode('', $whereCuentaEsp)) {
+        //     return $cuentaEsp->getSubcuenta($codejercicio);
+        // }
         // buscamos una subcuenta marcada con esa cuenta especial
         $subcuenta = new DinSubcuenta();
         $whereSubcuenta = [
