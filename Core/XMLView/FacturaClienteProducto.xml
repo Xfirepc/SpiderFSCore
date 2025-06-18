@@ -56,7 +56,10 @@
         <column name="unit-profit" display="right" order="190">
             <widget type="money" fieldname="avgbeneficio"/>
         </column>
-        <column name="price" display="none" order="200">
+        <column name="total-profit" display="right" order="190">
+            <widget type="money" fieldname="totalbeneficio"/>
+        </column>
+        <column name="price" display="right" order="200">
             <widget type="money" fieldname="precio"/>
         </column>
     </columns>

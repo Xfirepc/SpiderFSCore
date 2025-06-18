@@ -50,7 +50,7 @@ abstract class PDFCore extends ExportBase
     /**
      * Maximum title length
      */
-    const MAX_TITLE_LEN = 12;
+    const MAX_TITLE_LEN = 16;
 
     /**
      * Translator object

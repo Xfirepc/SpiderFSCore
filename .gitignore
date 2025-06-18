@@ -31,3 +31,5 @@ error.log
 .vscode
 *.code-workspace
 .history
+main_spidercodeapp-cron.err.log
+supervisord.pid

@@ -36,6 +36,7 @@ class FacturaClienteProducto extends JoinModel
     {
         return [
             'avgbeneficio' => 'sum(' . static::MAIN_TABLE . '.pvptotal) / sum(' . static::MAIN_TABLE . '.cantidad) - variantes.coste',
+            'totalbeneficio' => '(sum(' . static::MAIN_TABLE . '.pvptotal) / sum(' . static::MAIN_TABLE . '.cantidad) - variantes.coste) * sum(' . static::MAIN_TABLE . '.cantidad)',
             'avgprecio' => 'sum(' . static::MAIN_TABLE . '.pvptotal) / sum(' . static::MAIN_TABLE . '.cantidad)',
             'cantidad' => 'sum(' . static::MAIN_TABLE . '.cantidad)',
             'codalmacen' => static::DOC_TABLE . '.codalmacen',

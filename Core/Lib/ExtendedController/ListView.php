@@ -178,7 +178,8 @@ class ListView extends BaseView
         if ($this->totalAmounts) {
             $total = [];
             foreach ($this->totalAmounts as $key => $value) {
-                $total[$key] = $value['total'];
+                $name = Tools::lang()->trans($key);
+                $total[$name] = round($value['total'], 2);
             }
             $exportManager->addTablePage(array_keys($total), [$total]);
         }

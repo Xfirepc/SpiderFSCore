@@ -50,6 +50,9 @@
         <column name="unit-purchase-price" display="right" order="170">
             <widget type="money" fieldname="avgcoste"/>
         </column>
+        <column name="total-purchase-price" display="right" order="175">
+            <widget type="money" fieldname="totalcoste"/>
+        </column>
         <column name="cost-price" display="right" order="180">
             <widget type="money" fieldname="coste"/>
         </column>

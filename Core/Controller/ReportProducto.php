@@ -76,6 +76,7 @@ class ReportProducto extends ListController
         $this->addOrderBy($viewName, ['cantidad'], 'quantity-sold', 2);
         $this->addOrderBy($viewName, ['avgbeneficio'], 'unit-profit');
         $this->addOrderBy($viewName, ['avgprecio'], 'unit-sale-price');
+        $this->addOrderBy($viewName, ['totalcoste'], 'total-purchase-price');
         $this->addOrderBy($viewName, ['coste'], 'cost-price');
         $this->addOrderBy($viewName, ['precio'], 'price');
         $this->addOrderBy($viewName, ['stockfis'], 'stock');
@@ -94,6 +95,7 @@ class ReportProducto extends ListController
         $this->addView($viewName, 'Join\FacturaClienteProducto', 'customer-invoices', 'fas fa-shopping-cart');
         $this->addOrderBy($viewName, ['cantidad'], 'quantity-sold', 2);
         $this->addOrderBy($viewName, ['avgbeneficio'], 'unit-profit');
+        $this->addOrderBy($viewName, ['totalbeneficio'], 'total-profit');
         $this->addOrderBy($viewName, ['avgprecio'], 'unit-sale-price');
         $this->addOrderBy($viewName, ['coste'], 'cost-price');
         $this->addOrderBy($viewName, ['precio'], 'price');
