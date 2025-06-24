@@ -51,10 +51,10 @@ final class Cache
         }
     }
 
-    public static function delete(string $key): void
+    public static function delete(string $key, $keyInstallation = null): void
     {
         // buscamos el archivo y lo borramos
-        $fileName = self::filename($key);
+        $fileName = self::filename($key . ($keyInstallation ?? self::defaultKey()));
         if (file_exists($fileName)) {
             unlink($fileName);
         }
@@ -89,10 +89,10 @@ final class Cache
         }
     }
 
-    public static function get(string $key)
+    public static function get(string $key, $keyInstallation = null)
     {
         // buscamos el archivo y comprobamos su fecha de modificación
-        $fileName = self::filename($key . self::getKeyInstallation());
+        $fileName = self::filename($key . ($keyInstallation ?? self::defaultKey()));
         if (file_exists($fileName) && filemtime($fileName) >= time() - self::EXPIRATION) {
             // todavía no ha expirado, devolvemos el contenido
             $data = file_get_contents($fileName);
@@ -106,7 +106,7 @@ final class Cache
         return null;
     }
 
-    public static function set(string $key, $value): void
+    public static function set(string $key, $value, $keyInstallation = null): void
     {
         // si no existe la carpeta, la creamos
         $folder = FS_FOLDER . self::FILE_PATH;
@@ -116,7 +116,7 @@ final class Cache
 
         // guardamos el contenido
         $data = serialize($value);
-        $fileName = self::filename($key . self::getKeyInstallation());
+        $fileName = self::filename($key . ($keyInstallation ?? self::defaultKey()));
         $exists = file_exists($fileName);
 
         file_put_contents($fileName, $data);
@@ -152,7 +152,7 @@ final class Cache
         return $value;
     }
 
-    public static function getKeyInstallation(): string
+    public static function defaultKey(): string
     {
         if (is_null(self::$keyInstallation)) {
             $ruc = $_COOKIE['ruc'] ?? $_SERVER['HTTP_X_RUC'] ?? null;
