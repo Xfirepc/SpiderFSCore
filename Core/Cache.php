@@ -20,6 +20,7 @@
 namespace FacturaScripts\Core;
 
 use Closure;
+use FacturaScripts\Dinamic\Model\Empresa;
 use Throwable;
 
 /**
@@ -31,6 +32,8 @@ final class Cache
 {
     const EXPIRATION = 3600;
     const FILE_PATH = '/MyFiles/Tmp/FileCache';
+
+    private static $keyInstallation = null;
 
     public static function clear(): void
     {
@@ -89,7 +92,7 @@ final class Cache
     public static function get(string $key)
     {
         // buscamos el archivo y comprobamos su fecha de modificación
-        $fileName = self::filename($key);
+        $fileName = self::filename($key . self::getKeyInstallation());
         if (file_exists($fileName) && filemtime($fileName) >= time() - self::EXPIRATION) {
             // todavía no ha expirado, devolvemos el contenido
             $data = file_get_contents($fileName);
@@ -113,7 +116,7 @@ final class Cache
 
         // guardamos el contenido
         $data = serialize($value);
-        $fileName = self::filename($key);
+        $fileName = self::filename($key . self::getKeyInstallation());
         $exists = file_exists($fileName);
 
         file_put_contents($fileName, $data);
@@ -140,12 +143,22 @@ final class Cache
      */
     public static function remember(string $key, Closure $callback)
     {
-        if (!is_null($value = self::get($key))) {
+        if (!is_null($value = self::get($key . self::getKeyInstallation()))) {
             return $value;
         }
 
         $value = $callback();
-        self::set($key, $value);
+        self::set($key . self::getKeyInstallation(), $value);
         return $value;
+    }
+
+    public static function getKeyInstallation(): string
+    {
+        if (is_null(self::$keyInstallation)) {
+            $empresa = Empresa::getDefault();
+            self::$keyInstallation = $empresa->cifnif;
+        }
+
+        return self::$keyInstallation;
     }
 }

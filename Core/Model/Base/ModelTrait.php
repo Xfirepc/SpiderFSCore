@@ -83,6 +83,13 @@ trait ModelTrait
             return;
         }
 
+        // read from the cache
+        $key = 'model-fields-' . $this->modelClassName();
+        static::$fields = Cache::get($key);
+        if (is_array(static::$fields) && static::$fields) {
+            return;
+        }
+
         // table exists?
         if (false === $dataBase->tableExists($tableName)) {
             static::$fields = [];
@@ -91,5 +98,8 @@ trait ModelTrait
 
         // get from the database and store on the cache
         static::$fields = $dataBase->getColumns($tableName);
+
+        // save on the cache
+        Cache::set($key, static::$fields);
     }
 }

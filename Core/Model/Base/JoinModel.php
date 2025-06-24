@@ -180,6 +180,15 @@ abstract class JoinModel
             $groupFields .= ', ';
         }
 
+        // buscamos en caché
+        $cacheKey = 'join-model-' . md5($this->getSQLFrom()) . '-count';
+        if (empty($where)) {
+            $count = Cache::get($cacheKey);
+            if (is_numeric($count)) {
+                return $count;
+            }
+        }
+
         $sql = 'SELECT ' . $groupFields . 'COUNT(*) count_total'
             . ' FROM ' . $this->getSQLFrom()
             . DataBaseWhere::getSQLWhere($where)
@@ -187,7 +196,15 @@ abstract class JoinModel
 
         $data = self::$dataBase->select($sql);
         $count = count($data);
-        return $count == 1 ? (int)$data[0]['count_total'] : $count;
+        
+        $final = $count == 1 ? (int)$data[0]['count_total'] : $count;
+
+        // guardamos en caché
+        if (empty($where)) {
+            Cache::set($cacheKey, $final);
+        }
+
+        return $final;
     }
 
     /**
@@ -305,6 +322,14 @@ abstract class JoinModel
 
     public function totalSum(string $field, array $where = []): float
     {
+        // buscamos en caché
+        $cacheKey = 'join-model-' . md5($this->getSQLFrom()) . '-' . $field . '-total-sum';
+        if (empty($where)) {
+            $count = Cache::get($cacheKey);
+            if (is_numeric($count)) {
+                return $count;
+            }
+        }
         // obtenemos el nombre completo del campo
         $fields = $this->getFields();
         $field = $fields[$field] ?? $field;
@@ -314,7 +339,14 @@ abstract class JoinModel
             'SELECT SUM(' . $field . ') AS total_sum' . ' FROM ' . $this->getSQLFrom() . DataBaseWhere::getSQLWhere($where);
 
         $data = self::$dataBase->select($sql);
-        return count($data) == 1 ? (float)$data[0]['total_sum'] : 0.0;
+        $sum = count($data) == 1 ? (float)$data[0]['total_sum'] : 0.0;
+
+        // guardamos en caché
+        if (empty($where)) {
+            Cache::set($cacheKey, $sum);
+        }
+
+        return $sum;
     }
 
     /**

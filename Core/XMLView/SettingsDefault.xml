@@ -164,7 +164,7 @@
                 <widget type="number" fieldname="item_limit" min="10" max="250" icon="fas fa-list" required="true"/>
             </column>
             <column name="default-role" titleurl="ListUser?activetab=ListRole" numcolumns="3" order="150">
-                <widget type="select" fieldname="codrole" onclick="EditRole" required="true" icon="fas fa-users">
+                <widget type="select" fieldname="codrole" onclick="EditRole" icon="fas fa-users">
                     <values source="roles" fieldcode="codrole" fieldtitle="descripcion"/>
                 </widget>
             </column>
