@@ -143,20 +143,20 @@ final class Cache
      */
     public static function remember(string $key, Closure $callback)
     {
-        if (!is_null($value = self::get($key . self::getKeyInstallation()))) {
+        if (!is_null($value = self::get($key))) {
             return $value;
         }
 
         $value = $callback();
-        self::set($key . self::getKeyInstallation(), $value);
+        self::set($key, $value);
         return $value;
     }
 
     public static function getKeyInstallation(): string
     {
         if (is_null(self::$keyInstallation)) {
-            $empresa = Empresa::getDefault();
-            self::$keyInstallation = $empresa->cifnif;
+            $ruc = $_COOKIE['ruc'] ?? $_SERVER['HTTP_X_RUC'] ?? null;
+            self::$keyInstallation = $ruc ? '-' . $ruc : '';
         }
 
         return self::$keyInstallation;
