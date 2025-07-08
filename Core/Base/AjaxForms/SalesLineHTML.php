@@ -253,7 +253,7 @@ class SalesLineHTML
     private static function cantidadStock(Translator $i18n, SalesDocumentLine $line, SalesDocument $model): string
     {
         $html = '';
-        if (empty($line->referencia) || $line->modelClassName() === 'LineaFacturaCliente' || false === $model->editable) {
+        if (empty($line->referencia) || false === $model->editable) {
             return $html;
         }
 
