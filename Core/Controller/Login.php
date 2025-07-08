@@ -78,10 +78,6 @@ class Login implements ControllerInterface
             case 'logout':
                 $this->logoutAction($request);
                 break;
-
-            case 'check-ruc';
-                $this->checkCompanyAction($request);
-                break;
         }
 
         echo Html::render('Login/Login.html.twig', [

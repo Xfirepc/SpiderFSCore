@@ -97,10 +97,7 @@ class WidgetFile extends BaseWidget
 
             // check if the file already exists
             $destiny = FS_FOLDER . '/MyFiles/';
-            $destinyName = $uploadFile->getClientOriginalName();
-            if (file_exists($destiny . $destinyName)) {
-                $destinyName = mt_rand(1, 999999) . '_' . $destinyName;
-            }
+            $destinyName = time() . '_' . $uploadFile->getClientOriginalName();
 
             // move the file to the MyFiles folder
             if ($uploadFile->move($destiny, $destinyName)) {
