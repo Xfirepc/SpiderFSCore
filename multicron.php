@@ -24,7 +24,7 @@ $opt = getopt('', ['uri::']);
 use GuzzleHttp\Client;
 $client = new Client([
     'base_uri' => $opt['uri'],
-    'timeout'  => 25.0,
+    'timeout'  => 120.0,
 ]);
 
 
