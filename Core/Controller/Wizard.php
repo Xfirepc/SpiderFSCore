@@ -161,8 +161,21 @@ class Wizard extends Controller
         if ($cuenta->count() > 0) {
             return;
         }
-
-        foreach (Ejercicio::all() as $exercise) {
+        //Ejercicios
+        $ejercicios = Ejercicio::all();
+        if (empty($ejercicios)) {
+            $ejercicio = new Ejercicio();
+            $ejercicio->codejercicio = date('Y');
+            $ejercicio->nombre = 'Ejercicio ' . $ejercicio->codejercicio;
+            $ejercicio->fecha_inicio = date('Y-01-01');
+            $ejercicio->fecha_fin = date('Y-12-31');
+            $ejercicio->estado = Ejercicio::EXERCISE_STATUS_OPEN;
+            $ejercicio->longsubcuenta = 9;
+            $ejercicio->idempresa = $this->empresa->idempresa;
+            if ($ejercicio->save())
+                $ejercicios[] = $ejercicio;
+        }
+        foreach ($ejercicios as $exercise) {
             $planImport = new AccountingPlanImport();
             $planImport->importCSV($filePath, $exercise->codejercicio);
             return;

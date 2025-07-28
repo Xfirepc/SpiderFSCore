@@ -98,10 +98,10 @@ abstract class ErrorController implements ErrorControllerInterface
 
         if (false === Tools::config('disable_deploy_actions', false)) {
             $body .= '<div class="col-auto">'
-                . '<a href="' . Tools::config('route') . '/deploy?action=disable-plugins&token=' . CrashReport::newToken()
-                . '" class="btn btn-light">' . Tools::lang()->trans('disable-plugins') . '</a> '
-                . '<a href="' . Tools::config('route') . '/deploy?action=rebuild&token=' . CrashReport::newToken()
-                . '" class="btn btn-light">' . Tools::lang()->trans('rebuild') . '</a> '
+                // . '<a href="' . Tools::config('route') . '/deploy?action=disable-plugins&token=' . CrashReport::newToken()
+                // . '" class="btn btn-light">' . Tools::lang()->trans('disable-plugins') . '</a> '
+                // . '<a href="' . Tools::config('route') . '/deploy?action=rebuild&token=' . CrashReport::newToken()
+                // . '" class="btn btn-light">' . Tools::lang()->trans('rebuild') . '</a> '
                 . '</div>';
         }
 
