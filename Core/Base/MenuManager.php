@@ -253,15 +253,9 @@ class MenuManager
             // Regla: si empieza con Edit y en DB showonmenu=false, NO mostrar aunque JSON diga true.
             // Si empieza con Edit y DB=true, mostrar solo si JSON=true.
             // Para no-Edit: usar JSON si existe, sino DB.
-            if ($startsWithEdit) {
-                $visible = ($dbVisible && ($jsonVisible === null ? true : $jsonVisible));
-            } else {
-                if ($jsonVisible !== null) {
-                    $visible = (bool)$jsonVisible;
-                } else {
-                    $visible = $dbVisible;
-                }
-            }
+            // Siempre respetar DB: si DB=false, no mostrar nunca.
+            // JSON solo puede restringir (ocultar) cuando DB=true.
+            $visible = ($dbVisible && ($jsonVisible === null ? true : (bool)$jsonVisible));
 
             if ($visible) {
                 $pages[] = $page;
