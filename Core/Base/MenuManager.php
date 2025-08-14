@@ -192,7 +192,6 @@ class MenuManager
      */
     private function loadPages()
     {
-        $where = [new DataBaseWhere('showonmenu', true)];
         $order = [
             'lower(menu)' => 'ASC',
             'lower(submenu)' => 'ASC',
@@ -200,7 +199,75 @@ class MenuManager
             'lower(title)' => 'ASC'
         ];
 
-        $pages = self::$pageModel->all($where, $order, 0, 0);
+        // Cargar visibilidad desde JSON de SpiderBuilder (si existe)
+        $savedMenu = $this->getAllowedNamePages();
+
+        // Si no existe archivo de configuración, mostrar el menú tal cual DB (showonmenu)
+        if ($savedMenu === null) {
+            $where = [new DataBaseWhere('showonmenu', true)];
+            $pages = self::$pageModel->all($where, $order, 0, 0);
+            if (self::$user && self::$user->admin) {
+                return $pages;
+            }
+            $result = [];
+            $userAccess = $this->getUserAccess(self::$user);
+            foreach ($pages as $page) {
+                foreach ($userAccess as $pageRule) {
+                    if ($page->name === $pageRule->pagename) {
+                        $result[] = $page;
+                        break;
+                    }
+                }
+            }
+            return $result;
+        }
+
+        // Cargamos todas las páginas y filtramos por visibilidad según JSON o showonmenu
+        $allPages = self::$pageModel->all([], $order, 0, 0);
+        $pages = [];
+
+        // Construimos mapa nombre => show, solo formato nuevo: { "page_name": true|false }
+        $showMap = [];
+        if (is_array($savedMenu) && !empty($savedMenu)) {
+            foreach ($savedMenu as $key => $value) {
+                if (is_string($key) && is_bool($value)) {
+                    $showMap[$key] = $value;
+                }
+            }
+        }
+
+        foreach ($allPages as $page) {
+            $dbVisible = (bool)$page->showonmenu;
+            $startsWithEdit = (substr($page->name, 0, 4) === 'Edit');
+
+            // Determinar visibilidad desde JSON (si existe)
+            $jsonVisible = null; // null = no especificado en JSON
+            if (!empty($showMap)) {
+                if (array_key_exists($page->name, $showMap)) {
+                    $jsonVisible = (bool)$showMap[$page->name];
+                } else {
+                    $jsonVisible = false; // cuando existe mapa pero no está, considerar oculto
+                }
+            }
+
+            // Regla: si empieza con Edit y en DB showonmenu=false, NO mostrar aunque JSON diga true.
+            // Si empieza con Edit y DB=true, mostrar solo si JSON=true.
+            // Para no-Edit: usar JSON si existe, sino DB.
+            if ($startsWithEdit) {
+                $visible = ($dbVisible && ($jsonVisible === null ? true : $jsonVisible));
+            } else {
+                if ($jsonVisible !== null) {
+                    $visible = (bool)$jsonVisible;
+                } else {
+                    $visible = $dbVisible;
+                }
+            }
+
+            if ($visible) {
+                $pages[] = $page;
+            }
+        }
+
         if (self::$user && self::$user->admin) {
             return $pages;
         }
@@ -338,5 +405,22 @@ class MenuManager
         }
 
         return $result;
+    }
+
+    public function getAllowedNamePages()
+    {
+        $path = FS_FOLDER . '/MyFiles/Menu/' . FS_DB_NAME . '.json';
+        if (!file_exists($path)) {
+            return null;
+        }
+        $file = file_get_contents($path);
+        $data = json_decode($file, true);
+        return $data;
+    }
+
+    public function getOrCreateFile()
+    {
+        $path = FS_FOLDER . '/MyFiles/Menu/'.FS_DB_NAME.'.json';
+        return $path;
     }
 }
