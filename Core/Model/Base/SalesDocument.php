@@ -187,8 +187,11 @@ abstract class SalesDocument extends TransformerDocument
         if (parent::delete()) {
             // update customer risk
             $customer = $this->getSubject();
-            $customer->riesgoalcanzado = CustomerRiskTools::getCurrent($customer->primaryColumnValue());
-            $customer->save();
+            $primaryValue = $customer->primaryColumnValue();
+            if (!empty($primaryValue)) {
+                $customer->riesgoalcanzado = CustomerRiskTools::getCurrent($primaryValue);
+                $customer->save();
+            }
 
             return true;
         }
@@ -293,8 +296,11 @@ abstract class SalesDocument extends TransformerDocument
             $updatedCustomer = $this->getSubject();
 
             // update customer risk
-            $updatedCustomer->riesgoalcanzado = CustomerRiskTools::getCurrent($updatedCustomer->primaryColumnValue());
-            $updatedCustomer->save();
+            $primaryValue = $updatedCustomer->primaryColumnValue();
+            if (!empty($primaryValue)) {
+                $updatedCustomer->riesgoalcanzado = CustomerRiskTools::getCurrent($primaryValue);
+                $updatedCustomer->save();
+            }
             return true;
         }
 
@@ -457,8 +463,11 @@ abstract class SalesDocument extends TransformerDocument
         if ($this->previousData['codcliente'] !== $this->codcliente) {
             $customer = new Cliente();
             if ($customer->loadFromCode($this->previousData['codcliente'])) {
-                $customer->riesgoalcanzado = CustomerRiskTools::getCurrent($customer->primaryColumnValue());
-                $customer->save();
+                $primaryValue = $customer->primaryColumnValue();
+                if (!empty($primaryValue)) {
+                    $customer->riesgoalcanzado = CustomerRiskTools::getCurrent($primaryValue);
+                    $customer->save();
+                }
             }
         }
         parent::onUpdate();
@@ -494,7 +503,7 @@ abstract class SalesDocument extends TransformerDocument
     {
         $this->cifnif = $subject->cifnif ?? '';
         $this->codcliente = $subject->codcliente;
-        $this->nombrecliente = $subject->razonsocial;
+        $this->nombrecliente = $subject->razonsocial ;
 
         // commercial data
         if (empty($this->primaryColumnValue())) {
