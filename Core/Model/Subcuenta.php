@@ -221,11 +221,12 @@ class Subcuenta extends Base\ModelClass
         }
 
         // check exercise
-        $exercise = $this->getExercise();
-        if (false === $this->disableAdditionalTest && strlen($this->codsubcuenta) !== $exercise->longsubcuenta) {
-            Tools::log()->warning('account-length-error', ['%code%' => $this->codsubcuenta]);
-            return false;
-        }
+        // TODO: Check if this is needed
+        // $exercise = $this->getExercise();
+        // if (false === $this->disableAdditionalTest && strlen($this->codsubcuenta) !== $exercise->longsubcuenta) {
+        //     Tools::log()->warning('account-length-error', ['%code%' => $this->codsubcuenta]);
+        //     return false;
+        // }
 
         // sets account data
         $account = $this->getAccount();
