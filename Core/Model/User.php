@@ -94,6 +94,9 @@ class User extends ModelClass
     /** @var string */
     public $password;
 
+    /** @var string */
+    public $codserie;
+
     public function addRole(?string $code): bool
     {
         if (empty($code)) {
@@ -157,10 +160,11 @@ class User extends ModelClass
     {
         parent::clear();
         $this->admin = false;
-        $this->codalmacen = Tools::settings('default', 'codalmacen');
-        $this->creationdate = Tools::date();
         $this->enabled = true;
+        $this->creationdate = Tools::date();
+        $this->codalmacen = Tools::settings('default', 'codalmacen');
         $this->idempresa = Tools::settings('default', 'idempresa', 1);
+        $this->codserie = Tools::settings('default', 'codserie');
         $this->langcode = FS_LANG;
         $this->level = self::DEFAULT_LEVEL;
     }

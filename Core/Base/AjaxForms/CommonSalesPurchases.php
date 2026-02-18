@@ -107,6 +107,11 @@ trait CommonSalesPurchases
     {
         $warehouses = 0;
         $options = [];
+        $user = Session::user();
+        $codalmacen = $user->codalmacen;
+        // Jerarquía: si el modelo existe → almacén del modelo; si no → almacén por defecto del usuario
+        $selectedCodalmacen = $model->exists() ? $model->codalmacen : $codalmacen;
+
         foreach (Empresas::all() as $company) {
             if ($company->idempresa != $model->idempresa && $model->exists()) {
                 continue;
@@ -119,9 +124,8 @@ trait CommonSalesPurchases
                     continue;
                 }
 
-                $option .= ($row->codalmacen === $model->codalmacen) ?
-                    '<option value="' . $row->codalmacen . '" selected>' . $row->nombre . '</option>' :
-                    '<option value="' . $row->codalmacen . '">' . $row->nombre . '</option>';
+                $selected = $row->codalmacen === $selectedCodalmacen ? ' selected' : '';
+                $option .= '<option value="' . $row->codalmacen . '"' . $selected . '>' . $row->nombre . '</option>';
                 $warehouses++;
             }
             $options[] = '<optgroup label="' . $company->nombrecorto . '">' . $option . '</optgroup>';
@@ -188,27 +192,14 @@ trait CommonSalesPurchases
 
     protected static function codserie(Translator $i18n, BusinessDocument $model, string $jsFunc): string
     {
-        // es una factura rectificativa?
-        $rectificativa = property_exists($model, 'idfacturarect') && $model->idfacturarect;
+        $codserie = Session::user()->codserie ?? '';
+        // Jerarquía: si el modelo existe → serie del modelo; si no → serie por defecto del usuario
+        $selectedCodserie = $model->exists() ? $model->codserie : $codserie;
 
         $options = [];
         foreach (Series::all() as $row) {
-            // es la serie seleccionada
-            if ($row->codserie === $model->codserie) {
-                $options[] = '<option value="' . $row->codserie . '" selected>' . $row->descripcion . '</option>';
-                continue;
-            }
-
-            // si la serie es rectificativa y la factura también, la añadimos
-            if ($rectificativa && $row->tipo === 'R') {
-                $options[] = '<option value="' . $row->codserie . '">' . $row->descripcion . '</option>';
-                continue;
-            }
-
-            // si la serie no es rectificativa y la factura tampoco, la añadimos
-            if (false === $rectificativa && $row->tipo !== 'R') {
-                $options[] = '<option value="' . $row->codserie . '">' . $row->descripcion . '</option>';
-            }
+            $selected = $row->codserie === $selectedCodserie ? ' selected' : '';
+            $options[] = '<option value="' . $row->codserie . '"' . $selected . '>' . $row->descripcion . '</option>';
         }
 
         $attributes = $model->editable ?
