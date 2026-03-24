@@ -106,6 +106,7 @@ class InvoiceToAccounting extends AccountingClass
         $subAccount = $this->getCustomerAccount($customer);
         if (false === $subAccount->exists()) {
             Tools::log()->warning('customer-account-not-found');
+            Tools::log()->info('Configura las cuentas especiales en <a href="ConfigContableEcuador">Configuración Contable Ecuador</a>');
             $this->counterpart = null;
             return false;
         }
@@ -403,6 +404,7 @@ class InvoiceToAccounting extends AccountingClass
         $subAccount = $this->getSupplierAccount($supplier);
         if (false === $subAccount->exists()) {
             Tools::log()->warning('supplier-account-not-found');
+            Tools::log()->info('Configura las cuentas especiales en <a href="ConfigContableEcuador">Configuración Contable Ecuador</a>');
             $this->counterpart = null;
             return false;
         }
@@ -486,6 +488,7 @@ class InvoiceToAccounting extends AccountingClass
         }
 
         Tools::log()->warning('accounting-lines-error');
+        Tools::log()->info('Revisa la configuración de cuentas especiales en <a href="ConfigContableEcuador">Configuración Contable Ecuador</a>');
         $entry->delete();
     }
 
@@ -516,6 +519,7 @@ class InvoiceToAccounting extends AccountingClass
         }
 
         Tools::log()->warning('accounting-lines-error');
+        Tools::log()->info('Revisa la configuración de cuentas especiales en <a href="ConfigContableEcuador">Configuración Contable Ecuador</a>');
         $entry->delete();
     }
 
