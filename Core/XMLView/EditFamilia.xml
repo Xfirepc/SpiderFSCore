@@ -38,19 +38,19 @@
             <column name="codsubcuentacom" title="subaccount-purchases" titleurl="ListCuenta" description="optional"
                     order="100">
                 <widget type="autocomplete" fieldname="codsubcuentacom">
-                    <values source="subcuentas" fieldcode="codsubcuenta"/>
+                    <values source="subcuentas" fieldcode="codsubcuenta" fieldtitle="descripcion"/>
                 </widget>
             </column>
             <column name="codsubcuentaven" title="subaccount-sales" titleurl="ListCuenta" description="optional"
                     order="110">
                 <widget type="autocomplete" fieldname="codsubcuentaven">
-                    <values source="subcuentas" fieldcode="codsubcuenta"/>
+                    <values source="subcuentas" fieldcode="codsubcuenta" fieldtitle="descripcion"/>
                 </widget>
             </column>
             <column name="codsubcuentairpcomf" title="subaccount-irpf" titleurl="ListCuenta" description="optional"
                     numcolumns="5" order="120">
                 <widget type="autocomplete" fieldname="codsubcuentairpfcom">
-                    <values source="subcuentas" fieldcode="codsubcuenta"/>
+                    <values source="subcuentas" fieldcode="codsubcuenta" fieldtitle="descripcion"/>
                 </widget>
             </column>
         </group>

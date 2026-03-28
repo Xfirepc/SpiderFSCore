@@ -129,7 +129,9 @@
             </column>
             <column name="subaccount" description="customer-subaccount-p" titleurl="ListCuenta"
                     numcolumns="2" order="200">
-                <widget type="text" fieldname="codsubcuenta" maxlength="15" icon="fas fa-balance-scale"/>
+                <widget type="autocomplete" fieldname="codsubcuenta" icon="fas fa-balance-scale">
+                    <values source="subcuentas" fieldcode="codsubcuenta" fieldtitle="descripcion"/>
+                </widget>
             </column>
         </group>
         <group name="notes" numcolumns="12">

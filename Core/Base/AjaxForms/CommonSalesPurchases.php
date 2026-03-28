@@ -109,8 +109,8 @@ trait CommonSalesPurchases
         $options = [];
         $user = Session::user();
         $codalmacen = $user->codalmacen;
-        // Jerarquía: si el modelo existe → almacén del modelo; si no → almacén por defecto del usuario
-        $selectedCodalmacen = $model->exists() ? $model->codalmacen : $codalmacen;
+        // Jerarquía: si el modelo tiene almacén asignado → usarlo; si no → almacén por defecto del usuario
+        $selectedCodalmacen = !empty($model->codalmacen) ? $model->codalmacen : $codalmacen;
 
         foreach (Empresas::all() as $company) {
             if ($company->idempresa != $model->idempresa && $model->exists()) {
@@ -193,8 +193,8 @@ trait CommonSalesPurchases
     protected static function codserie(Translator $i18n, BusinessDocument $model, string $jsFunc): string
     {
         $codserie = Session::user()->codserie ?? '';
-        // Jerarquía: si el modelo existe → serie del modelo; si no → serie por defecto del usuario
-        $selectedCodserie = $model->exists() ? $model->codserie : $codserie;
+        // Jerarquía: si el modelo tiene serie asignada → usarla; si no → serie por defecto del usuario
+        $selectedCodserie = !empty($model->codserie) ? $model->codserie : $codserie;
 
         $options = [];
         foreach (Series::all() as $row) {

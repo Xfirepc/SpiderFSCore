@@ -27,6 +27,7 @@ use FacturaScripts\Core\Lib\ExtendedController\DocFilesTrait;
 use FacturaScripts\Core\Lib\ExtendedController\LogAuditTrait;
 use FacturaScripts\Core\Lib\ExtendedController\PanelController;
 use FacturaScripts\Core\Model\Base\PurchaseDocument;
+use FacturaScripts\Core\Session;
 use FacturaScripts\Core\Model\Base\PurchaseDocumentLine;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Lib\AssetManager;
@@ -55,6 +56,14 @@ abstract class PurchasesController extends PanelController
     {
         if ($reload) {
             $this->views[static::MAIN_VIEW_NAME]->model->clear();
+            // Aplicar defaults del usuario
+            $user = Session::user();
+            if (!empty($user->codalmacen)) {
+                $this->views[static::MAIN_VIEW_NAME]->model->codalmacen = $user->codalmacen;
+            }
+            if (!empty($user->codserie)) {
+                $this->views[static::MAIN_VIEW_NAME]->model->codserie = $user->codserie;
+            }
         }
 
         // loaded record? just return it

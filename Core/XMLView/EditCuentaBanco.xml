@@ -48,13 +48,13 @@
             <column name="subaccount" description="related-subaccount-purchases-sales" titleurl="ListCuenta"
                     order="120">
                 <widget type="autocomplete" fieldname="codsubcuenta">
-                    <values source="subcuentas" fieldcode="codsubcuenta"/>
+                    <values source="subcuentas" fieldcode="codsubcuenta" fieldtitle="descripcion"/>
                 </widget>
             </column>
             <column name="expense-subaccount" description="related-subaccount-bank-charges" titleurl="ListCuenta"
                     order="130">
                 <widget type="autocomplete" fieldname="codsubcuentagasto">
-                    <values source="subcuentas" fieldcode="codsubcuenta"/>
+                    <values source="subcuentas" fieldcode="codsubcuenta" fieldtitle="descripcion"/>
                 </widget>
             </column>
         </group>
