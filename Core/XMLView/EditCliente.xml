@@ -64,7 +64,7 @@
                 <widget type="email" fieldname="email" maxlength="100" icon="fas fa-envelope"/>
             </column>
             <column name="address" numcolumns="9" order="140">
-                <widget type="text" fieldname="direccion" maxlength="100" icon="fas fa-map-marked"/>
+                <widget type="text" fieldname="direccion" maxlength="150" icon="fas fa-map-marked"/>
             </column>
             <column name="shipping-address" numcolumns="3" order="150">
                 <widget type="select" fieldname="idcontactoenv" onclick="EditContacto"/>
