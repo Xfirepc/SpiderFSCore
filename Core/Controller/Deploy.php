@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core\Controller;
 
+use FacturaScripts\Core\Cache;
 use FacturaScripts\Core\Contract\ControllerInterface;
 use FacturaScripts\Core\CrashReport;
 use FacturaScripts\Core\Plugins;
@@ -45,6 +46,10 @@ class Deploy implements ControllerInterface
             case 'rebuild':
                 $this->rebuildAction();
                 break;
+
+            case 'rebuild-mass':
+                $this->rebuildMassAction();
+                return;
 
             default:
                 $this->deployAction();
@@ -106,5 +111,56 @@ class Deploy implements ControllerInterface
         Plugins::deploy();
 
         echo '<p>Rebuild finished.</p>';
+    }
+
+    protected function rebuildMassAction(): void
+    {
+        // Limpiamos cualquier output previo para garantizar JSON puro.
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (Tools::config('disable_deploy_actions', false)) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Deploy actions disabled']);
+            return;
+        }
+
+        // Token cross-tenant: el master lo guarda con keyInstallation = '' (cache global,
+        // archivo MyFiles/Tmp/FileCache/mass-rebuild-token-XXX.cache sin sufijo de RUC).
+        // El child lo lee con la misma key '' para acceder al mismo archivo.
+        $token = $_GET['token'] ?? '';
+        if (empty($token) || true !== Cache::get('mass-rebuild-token-' . $token, '')) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid or expired token']);
+            return;
+        }
+
+        $start = microtime(true);
+        $error = null;
+
+        // Capturamos cualquier output que Plugins::deploy pueda emitir.
+        ob_start();
+        try {
+            // (true, true) = clean Dinamic + initControllers, lo cual SÍ ejecuta
+            // Init::init/update de cada plugin → crea/migra tablas en la BD del tenant.
+            // El rebuild estándar (case 'rebuild') usa Plugins::deploy() sin args y NO
+            // ejecuta init/update — por eso no es suficiente para propagar tablas.
+            Plugins::deploy(true, true);
+            Cache::clear();
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+        }
+        $deployOutput = ob_get_clean();
+        $elapsed = (int) ((microtime(true) - $start) * 1000);
+
+        echo json_encode([
+            'status' => $error ? 'error' : 'ok',
+            'db' => defined('FS_DB_NAME') ? FS_DB_NAME : null,
+            'elapsed_ms' => $elapsed,
+            'message' => $error,
+            'output_excerpt' => $deployOutput ? mb_substr(strip_tags($deployOutput), 0, 500) : null,
+        ]);
     }
 }
