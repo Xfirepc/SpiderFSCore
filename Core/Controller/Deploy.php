@@ -143,15 +143,22 @@ class Deploy implements ControllerInterface
         // Capturamos cualquier output que Plugins::deploy pueda emitir.
         ob_start();
         try {
-            // (true, true) = clean Dinamic + initControllers, lo cual SÍ ejecuta
-            // Init::init/update de cada plugin → crea/migra tablas en la BD del tenant.
-            // El rebuild estándar (case 'rebuild') usa Plugins::deploy() sin args y NO
-            // ejecuta init/update — por eso no es suficiente para propagar tablas.
+            // (true, true) = clean Dinamic + initControllers. initControllers
+            // instancia controladores (lo que dispara la creacion de SUS tablas
+            // por efecto colateral), pero NO ejecuta los Init::init() de cada plugin.
             //
-            // OJO: NO llamar Cache::clear() aquí. Cache::clear() borra todos los .cache
-            // en MyFiles/Tmp/FileCache, incluyendo el token global del rebuild masivo,
-            // y los siguientes tenants devolverian 'Invalid or expired token'.
+            // En el flujo HTTP normal, index.php invoca Plugins::init() despues del
+            // bootstrap, pero el endpoint /deploy bypasea esto (ver index.php L62-64).
+            // Sin esa invocacion, los Init::init() de los plugins jamas corren y los
+            // modelos que solo se crean ahi (ej. SpiderRecipes::SRComposition) nunca
+            // generan su tabla. Por eso lo llamamos explicitamente aqui.
             Plugins::deploy(true, true);
+            Plugins::init();
+
+            // OJO: NO llamar Cache::clear() despues. Cache::clear() borra todos
+            // los .cache en MyFiles/Tmp/FileCache, incluyendo el token global del
+            // rebuild masivo, y los siguientes tenants devolverian
+            // 'Invalid or expired token'.
         } catch (\Throwable $e) {
             $error = $e->getMessage();
         }
