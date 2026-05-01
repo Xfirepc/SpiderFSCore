@@ -147,8 +147,11 @@ class Deploy implements ControllerInterface
             // Init::init/update de cada plugin → crea/migra tablas en la BD del tenant.
             // El rebuild estándar (case 'rebuild') usa Plugins::deploy() sin args y NO
             // ejecuta init/update — por eso no es suficiente para propagar tablas.
+            //
+            // OJO: NO llamar Cache::clear() aquí. Cache::clear() borra todos los .cache
+            // en MyFiles/Tmp/FileCache, incluyendo el token global del rebuild masivo,
+            // y los siguientes tenants devolverian 'Invalid or expired token'.
             Plugins::deploy(true, true);
-            Cache::clear();
         } catch (\Throwable $e) {
             $error = $e->getMessage();
         }
