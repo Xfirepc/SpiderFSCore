@@ -142,6 +142,8 @@ class Deploy implements ControllerInterface
 
         // Capturamos cualquier output que Plugins::deploy pueda emitir.
         ob_start();
+        $modelsInstantiated = 0;
+        $modelsFailed = [];
         try {
             // (true, true) = clean Dinamic + initControllers. initControllers
             // instancia controladores (lo que dispara la creacion de SUS tablas
@@ -149,11 +151,17 @@ class Deploy implements ControllerInterface
             //
             // En el flujo HTTP normal, index.php invoca Plugins::init() despues del
             // bootstrap, pero el endpoint /deploy bypasea esto (ver index.php L62-64).
-            // Sin esa invocacion, los Init::init() de los plugins jamas corren y los
-            // modelos que solo se crean ahi (ej. SpiderRecipes::SRComposition) nunca
-            // generan su tabla. Por eso lo llamamos explicitamente aqui.
             Plugins::deploy(true, true);
             Plugins::init();
+
+            // Forzamos la creacion de TODAS las tablas instanciando cada modelo
+            // de Dinamic/Model. ModelCore::__construct llama a DbUpdater::createTable
+            // si la tabla no existe — esto cubre cualquier modelo cuyo plugin no
+            // se moleste en hacerlo en su Init.php (caso comun: tablas nuevas
+            // anadidas a un plugin ya activo, donde update() ya no corre porque
+            // post_enable=false). Centralizado aqui para no obligar a cada plugin
+            // a recordar el patron.
+            list($modelsInstantiated, $modelsFailed) = self::ensureAllModelTables();
 
             // OJO: NO llamar Cache::clear() despues. Cache::clear() borra todos
             // los .cache en MyFiles/Tmp/FileCache, incluyendo el token global del
@@ -170,7 +178,58 @@ class Deploy implements ControllerInterface
             'db' => defined('FS_DB_NAME') ? FS_DB_NAME : null,
             'elapsed_ms' => $elapsed,
             'message' => $error,
+            'models_ok' => $modelsInstantiated,
+            'models_failed' => $modelsFailed,
             'output_excerpt' => $deployOutput ? mb_substr(strip_tags($deployOutput), 0, 500) : null,
         ]);
+    }
+
+    /**
+     * Escanea Dinamic/Model y instancia cada clase concreta para forzar la
+     * creacion de su tabla via ModelCore::__construct → DbUpdater::createTable.
+     * Es idempotente: tras la primera vez el cache de DbUpdater hace que las
+     * siguientes invocaciones sean no-op.
+     *
+     * Las excepciones por modelo se capturan individualmente para que un modelo
+     * roto no aborte el rebuild completo (se reporta en la respuesta JSON).
+     *
+     * @return array{0: int, 1: string[]} [count_ok, names_failed]
+     */
+    private static function ensureAllModelTables(): array
+    {
+        $modelDir = FS_FOLDER . '/Dinamic/Model';
+        if (!is_dir($modelDir)) {
+            return [0, []];
+        }
+
+        $ok = 0;
+        $failed = [];
+        $files = scandir($modelDir);
+        foreach ($files as $file) {
+            if (substr($file, -4) !== '.php') {
+                continue;
+            }
+            $modelName = substr($file, 0, -4);
+            $className = '\\FacturaScripts\\Dinamic\\Model\\' . $modelName;
+
+            if (!class_exists($className)) {
+                continue;
+            }
+            try {
+                $reflection = new \ReflectionClass($className);
+                if ($reflection->isAbstract() || $reflection->isInterface()) {
+                    continue;
+                }
+                $ctor = $reflection->getConstructor();
+                if ($ctor && $ctor->getNumberOfRequiredParameters() > 0) {
+                    continue;
+                }
+                new $className();
+                $ok++;
+            } catch (\Throwable $e) {
+                $failed[] = $modelName . ': ' . mb_substr($e->getMessage(), 0, 120);
+            }
+        }
+        return [$ok, $failed];
     }
 }
