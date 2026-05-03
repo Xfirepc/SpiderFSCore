@@ -296,12 +296,13 @@ class AttachedFile extends ModelOnChangeClass
         }
 
         $currentTime = time();
+        $newFileName = $currentTime . '_' . bin2hex(random_bytes(6)) . '.' . $this->getExtension();
         if (empty($this->path) ||
-            false === rename($currentPath, $newFolderPath . '/' . $currentTime . '.' . $this->getExtension())) {
+            false === rename($currentPath, $newFolderPath . '/' . $newFileName)) {
             return false;
         }
 
-        $this->path = $newFolder . '/' . $currentTime . '.' . $this->getExtension();
+        $this->path = $newFolder . '/' . $newFileName;
         $this->size = filesize($this->getFullPath());
         $info = new finfo();
         $this->mimetype = $info->file($this->getFullPath(), FILEINFO_MIME_TYPE);
