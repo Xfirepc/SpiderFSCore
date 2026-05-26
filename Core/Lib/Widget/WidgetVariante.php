@@ -60,13 +60,14 @@ class WidgetVariante extends WidgetText
         $variante->loadFromCode('', [
             new DataBaseWhere($this->match, $this->value)
         ]);
+        $name = $variante->referencia ? ($variante->referencia . ' - ' . $variante->description()) : Tools::lang()->trans('select');
 
         if ($this->readonly()) {
             return '<div class="form-group mb-2">'
                 . '<input type="hidden" id="' . $this->id . '" name="' . $this->fieldname . '" value="' . $this->value . '">'
                 . $labelHtml
-                . '<a href="' . $variante->url() . '" class="btn btn-block btn-outline-secondary">'
-                . '<i class="' . $icon . ' fa-fw"></i> ' . ($variante->referencia ?? Tools::lang()->trans('select'))
+                . '<a href="' . $variante->url() . '" class="btn btn-block btn-outline-dark">'
+                . '<i class="' . $icon . ' fa-fw"></i> ' . $name
                 . '</a>'
                 . $descriptionHtml
                 . '</div>';
@@ -75,9 +76,9 @@ class WidgetVariante extends WidgetText
         return '<div class="form-group mb-2">'
             . '<input type="hidden" id="' . $this->id . '" name="' . $this->fieldname . '" value="' . $this->value . '">'
             . $labelHtml
-            . '<a href="#" class="btn btn-block btn-outline-secondary" data-toggle="modal" data-target="#modal_' . $this->id . '">'
+            . '<a href="#" class="btn btn-block btn-outline-dark" data-toggle="modal" data-target="#modal_' . $this->id . '">'
             . '<i class="' . $icon . ' fa-fw"></i> '
-            . '<span id="modal_span_' . $this->id . '">' . ($variante->referencia ?? Tools::lang()->trans('select')) . '</span>'
+            . '<span id="modal_span_' . $this->id . '">' . $name . '</span>'
             . '</a>'
             . $descriptionHtml
             . '</div>'
