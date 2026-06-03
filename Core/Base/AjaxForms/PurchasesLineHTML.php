@@ -26,6 +26,7 @@ use FacturaScripts\Core\DataSrc\Impuestos;
 use FacturaScripts\Core\Model\Base\PurchaseDocument;
 use FacturaScripts\Core\Model\Base\PurchaseDocumentLine;
 use FacturaScripts\Core\Tools;
+use FacturaScripts\Dinamic\Model\Stock;
 use FacturaScripts\Dinamic\Model\Variante;
 
 /**
@@ -239,8 +240,31 @@ class PurchasesLineHTML
             . self::cantidadRestante($i18n, $line, $model)
             . '<input type="number" name="cantidad_' . $idlinea . '" value="' . $line->cantidad
             . '" class="form-control form-control-sm text-lg-right border-0 doc-line-qty" onkeyup="return ' . $jsFunc . '(\'recalculate-line\', \'0\', event);"/>'
+            . self::cantidadStock($i18n, $line, $model)
             . '</div>'
             . '</div>';
+    }
+
+    private static function cantidadStock(Translator $i18n, PurchaseDocumentLine $line, PurchaseDocument $model): string
+    {
+        $html = '';
+        if (empty($line->referencia) || false === $model->editable) {
+            return $html;
+        }
+
+        $product = $line->getProducto();
+        if ($product->nostock) {
+            return $html;
+        }
+
+        // buscamos el stock de este producto en este almacén (precargado por loadProducts)
+        $stock = self::$stocks[$line->referencia] ?? new Stock();
+
+        $html = $stock->cantidad > 0 ?
+            '<a href="' . $stock->url() . '" target="_Blank" class="btn btn-outline-success">' . $stock->cantidad . '</a>' :
+            '<a href="' . $stock->url() . '" target="_Blank" class="btn btn-outline-danger">' . $stock->cantidad . '</a>';
+
+        return '<div class="input-group-prepend" title="' . $i18n->trans('stock') . '">' . $html . '</div>';
     }
 
     private static function getFastLine(PurchaseDocument $model, array $formData): ?PurchaseDocumentLine
