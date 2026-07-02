@@ -21,6 +21,12 @@ function enforceActiveTenant($ruc) {
         return;
     }
 
+    // Botón "Reintentar acceso" de suspended.php: descarta la caché para
+    // releer el estado real desde la BD central en este mismo request.
+    if (isset($_GET['sb_retry']) && function_exists('apcu_delete')) {
+        apcu_delete('sb_tenant_active_' . $ruc);
+    }
+
     $active = getTenantActiveStatus($ruc);
     if ($active === null) {
         return;

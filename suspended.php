@@ -144,6 +144,30 @@ h1 {
     height: 18px;
     fill: currentColor;
 }
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid rgba(9, 23, 42, 0.2);
+    color: var(--login-azul);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    text-decoration: none;
+    transition: border-color 0.2s, background 0.2s;
+}
+.btn-outline:hover {
+    border-color: var(--login-celeste);
+    background: rgba(49, 210, 221, 0.08);
+}
+.btn-outline svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
 .footer {
     margin-top: 1.75rem;
     padding-top: 1.25rem;
@@ -179,6 +203,11 @@ h1 {
         <a class="btn" href="https://wa.link/ubiy13" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.04 2c-5.52 0-10 4.48-10 10 0 1.76.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21 5.52 0 10-4.48 10-10s-4.48-10-10-10zm5.85 14.1c-.25.7-1.43 1.33-1.99 1.42-.53.08-1.2.12-1.94-.12-.45-.14-1.02-.33-1.75-.65-3.08-1.33-5.09-4.43-5.24-4.63-.15-.2-1.24-1.65-1.24-3.15 0-1.5.79-2.24 1.07-2.54.28-.3.61-.38.81-.38.2 0 .41 0 .58.01.19.01.44-.07.69.53.25.6.86 2.08.93 2.23.07.15.12.33.02.53-.1.2-.15.32-.3.5-.15.18-.31.4-.45.54-.15.15-.3.31-.13.61.17.3.77 1.27 1.65 2.05 1.13 1 2.08 1.31 2.38 1.46.3.15.47.12.65-.08.17-.2.74-.87.94-1.16.2-.3.4-.25.67-.15.27.1 1.72.81 2.02.96.3.15.5.22.57.35.07.13.07.77-.18 1.47z"/></svg>
             Contactar por WhatsApp
+        </a>
+        <br>
+        <a class="btn-outline" href="/?sb_retry=1">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+            Reintentar acceso
         </a>
         <div class="footer">
             <a href="https://spidercode.dev" target="_blank" rel="noopener">www.spidercode.dev</a>
