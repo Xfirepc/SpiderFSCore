@@ -129,6 +129,12 @@ final class Plugins
         if ($initControllers) {
             $pluginDeploy->initControllers();
         }
+
+        // con opcache.validate_timestamps=Off en producción, el bytecode compilado
+        // no se refresca solo tras un git pull + reconstruir; forzamos la limpieza
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
     }
 
     public static function disable(string $pluginName): bool
