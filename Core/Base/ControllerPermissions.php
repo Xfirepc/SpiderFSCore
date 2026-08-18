@@ -54,6 +54,19 @@ final class ControllerPermissions
     {
         if (empty($user) || empty($pageName)) {
             // do nothing
+        } elseif (!TenantMenuPolicy::allows($pageName, $user)) {
+            // A managed tenant whitelist is an additional boundary. It must
+            // also apply to admin users; only sysadmin is allowed to bypass it.
+            $this->accessMode = 0;
+            $this->allowAccess = false;
+        } elseif (!empty($user->sysadmin)) {
+            $this->accessMode = 99;
+            $this->allowAccess = true;
+            $this->allowDelete = true;
+            $this->allowExport = true;
+            $this->allowImport = true;
+            $this->allowUpdate = true;
+            $this->onlyOwnerData = false;
         } elseif ($user->admin) {
             // admin user
             $this->accessMode = 99;

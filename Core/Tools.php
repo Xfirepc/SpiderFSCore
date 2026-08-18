@@ -494,7 +494,10 @@ class Tools
      */
     public static function settingsClear(): void
     {
-        Cache::delete('tools-settings');
+        // Settings can be read through the proxy with an X-RUC namespace.
+        // A save from the master UI may not carry that header, so deleting
+        // only the current cache key leaves API requests using stale values.
+        Cache::deleteMulti('tools-settings');
         self::$settings = null;
     }
 

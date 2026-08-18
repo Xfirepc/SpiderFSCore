@@ -498,7 +498,13 @@ class NewMail
         $uuid = uniqid();
 
         // obtenemos los adjuntos
-        $attachments = $this->mail->getAttachments();
+        $attachments = array_filter(
+            $this->mail->getAttachments(),
+            static function ($attachment): bool {
+                return is_array($attachment)
+                    && ($attachment[6] ?? 'attachment') === 'attachment';
+            }
+        );
 
         // guardar correo electrónico enviado
         foreach (array_unique($addresses) as $address) {
@@ -525,6 +531,13 @@ class NewMail
         Tools::folderCheckOrCreate($path);
 
         foreach ($attachments as $attach) {
+            // PHPMailer stores string attachments in position 0 as binary
+            // content, not as a filesystem path. They cannot be copied from
+            // the original location when archiving the sent message.
+            if (!empty($attach[5])) {
+                continue;
+            }
+
             $newPath = $path . $attach[1];
 
             // movemos los adjuntos de la carpeta temporal a la carpeta de adjuntos del email
