@@ -2,18 +2,34 @@
 
 function getConfigFile()
 {
-    $ruc = getTenantSelector();
-    if ($ruc === null) {
+    $selection = getTenantSelection();
+    if ($selection === null) {
+        return __DIR__ . '/config.php';
+    }
+
+    $ruc = $selection['value'];
+    if (isHostDatabaseSelector($ruc)) {
+        if ($selection['source'] === 'cookie') {
+            clearTenantSelectorCookie();
+        }
         return __DIR__ . '/config.php';
     }
 
     if (!preg_match('/^[A-Za-z0-9_\-]{1,30}$/', $ruc)) {
+        if ($selection['source'] === 'cookie') {
+            clearTenantSelectorCookie();
+            return __DIR__ . '/config.php';
+        }
         renderTenantSelectionError(400);
         exit;
     }
 
     $configPath = __DIR__ . '/Config/config_' . $ruc . '.php';
     if (!is_file($configPath)) {
+        if ($selection['source'] === 'cookie') {
+            clearTenantSelectorCookie();
+            return __DIR__ . '/config.php';
+        }
         renderTenantSelectionError(404);
         exit;
     }
@@ -24,16 +40,72 @@ function getConfigFile()
 
 function getTenantSelector()
 {
-    // El proxy inverso tiene prioridad. En producción debe eliminar cualquier
-    // X-RUC recibido del cliente y establecer su propio valor de confianza.
-    $candidates = [$_SERVER['HTTP_X_RUC'] ?? null, $_COOKIE['ruc'] ?? null];
-    foreach ($candidates as $candidate) {
-        if (is_string($candidate) && trim($candidate) !== '') {
-            return trim($candidate);
+    $selection = getTenantSelection();
+    return $selection === null || $selection['value'] === ''
+        ? null
+        : $selection['value'];
+}
+
+/**
+ * La cookie conserva la prioridad histórica del navegador. X-RUC queda como
+ * alternativa para llamadas internas sin cookie, como el BFF del portal DEMO.
+ */
+function getTenantSelection()
+{
+    if (array_key_exists('ruc', $_COOKIE)) {
+        return [
+            'source' => 'cookie',
+            'value' => is_string($_COOKIE['ruc']) ? trim($_COOKIE['ruc']) : '',
+        ];
+    }
+
+    if (isset($_SERVER['HTTP_X_RUC']) && is_string($_SERVER['HTTP_X_RUC'])) {
+        $value = trim($_SERVER['HTTP_X_RUC']);
+        if ($value !== '') {
+            return ['source' => 'header', 'value' => $value];
         }
     }
 
     return null;
+}
+
+function isHostDatabaseSelector($selector)
+{
+    if ($selector === '') {
+        return false;
+    }
+
+    $config = loadHostDatabaseConfig();
+    return hash_equals((string)$config['name'], (string)$selector);
+}
+
+function clearTenantSelectorCookie()
+{
+    unset($_COOKIE['ruc']);
+
+    // La instalación puede vivir en / o en una subruta. Expiramos ambos paths
+    // posibles para no dejar una segunda cookie ruc oculta en el navegador.
+    $paths = ['/', hostRoutePath()];
+    foreach (array_unique($paths) as $path) {
+        setcookie('ruc', '', [
+            'expires' => time() - 3600,
+            'path' => $path,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+}
+
+function hostRoutePath()
+{
+    $contents = (string)file_get_contents(__DIR__ . '/config.php');
+    $pattern = '~define\(\s*([\'\"])FS_ROUTE\1\s*,\s*([\'\"])(.*?)\2\s*\)\s*;~s';
+    if (!preg_match($pattern, $contents, $matches)) {
+        return '/';
+    }
+
+    $route = trim(stripcslashes($matches[3]), '/');
+    return $route === '' ? '/' : '/' . $route;
 }
 
 function enforceActiveTenant($ruc)

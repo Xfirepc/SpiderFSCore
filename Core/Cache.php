@@ -155,7 +155,7 @@ final class Cache
     public static function defaultKey(): string
     {
         if (is_null(self::$keyInstallation)) {
-            $ruc = $_SERVER['HTTP_X_RUC'] ?? $_COOKIE['ruc'] ?? null;
+            $ruc = $_COOKIE['ruc'] ?? $_SERVER['HTTP_X_RUC'] ?? null;
             $ruc = is_string($ruc) ? trim($ruc) : null;
             self::$keyInstallation = $ruc ? '-' . $ruc : '';
         }
