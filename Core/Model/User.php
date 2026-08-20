@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core\Model;
 
+use FacturaScripts\Core\Base\TenantMenuPolicy;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Model\Base\CompanyRelationTrait;
 use FacturaScripts\Core\Model\Base\GravatarTrait;
@@ -137,6 +138,15 @@ class User extends ModelClass
         // si está desactivado, no puede acceder a nada
         if (false === $this->enabled) {
             return false;
+        }
+
+        if (!TenantMenuPolicy::allows($pageName, $this)) {
+            return false;
+        }
+
+        if (!empty($this->sysadmin)) {
+            $page = new DinPage();
+            return $page->loadFromCode($pageName) && $permission !== 'only-owner-data';
         }
 
         // si es admin, tiene acceso completo

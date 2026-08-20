@@ -199,8 +199,37 @@ class MenuManager
             'lower(title)' => 'ASC'
         ];
 
+        // A managed tenant must fail closed if its whitelist is missing or
+        // corrupt. Sysadmin keeps the central full-access view.
+        if (TenantMenuPolicy::isManaged()
+            && !(self::$user && !empty(self::$user->sysadmin))) {
+            $managedMap = TenantMenuPolicy::menu();
+            if ($managedMap === null) {
+                return [];
+            }
+        } else {
+            $managedMap = null;
+        }
+
         // Cargar visibilidad desde JSON de SpiderBuilder (si existe)
-        $savedMenu = $this->getAllowedNamePages();
+        $savedMenu = (TenantMenuPolicy::isManaged()
+            && self::$user && !empty(self::$user->sysadmin))
+            ? null
+            : $this->getAllowedNamePages();
+
+        // Legacy keeps the historical behaviour. Managed tenants use the
+        // complete whitelist, including pages whose showonmenu is false (they
+        // remain hidden from the menu by the DB flag below).
+        if ($managedMap !== null) {
+            $allPages = self::$pageModel->all([], $order, 0, 0);
+            $pages = [];
+            foreach ($allPages as $page) {
+                if (!empty($managedMap[$page->name]) && $page->showonmenu) {
+                    $pages[] = $page;
+                }
+            }
+            return $pages;
+        }
 
         // Si no existe archivo de configuración, mostrar el menú tal cual DB (showonmenu)
         if ($savedMenu === null) {
