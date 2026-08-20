@@ -2,16 +2,38 @@
 
 function getConfigFile()
 {
-    $ruc = $_COOKIE['ruc'] ?? $_SERVER['HTTP_X_RUC'] ?? null;
-    if ($ruc) {
-        enforceActiveTenant($ruc);
-        $configPath = __DIR__ . '/Config/config_' . $ruc . '.php';
-        if (file_exists($configPath)) {
-            return $configPath;
+    $ruc = getTenantSelector();
+    if ($ruc === null) {
+        return __DIR__ . '/config.php';
+    }
+
+    if (!preg_match('/^[A-Za-z0-9_\-]{1,30}$/', $ruc)) {
+        renderTenantSelectionError(400);
+        exit;
+    }
+
+    $configPath = __DIR__ . '/Config/config_' . $ruc . '.php';
+    if (!is_file($configPath)) {
+        renderTenantSelectionError(404);
+        exit;
+    }
+
+    enforceActiveTenant($ruc);
+    return $configPath;
+}
+
+function getTenantSelector()
+{
+    // El proxy inverso tiene prioridad. En producción debe eliminar cualquier
+    // X-RUC recibido del cliente y establecer su propio valor de confianza.
+    $candidates = [$_SERVER['HTTP_X_RUC'] ?? null, $_COOKIE['ruc'] ?? null];
+    foreach ($candidates as $candidate) {
+        if (is_string($candidate) && trim($candidate) !== '') {
+            return trim($candidate);
         }
     }
 
-    return __DIR__ . '/config.php';
+    return null;
 }
 
 function enforceActiveTenant($ruc)
@@ -31,6 +53,10 @@ function enforceActiveTenant($ruc)
     $state = getTenantAccessState($ruc);
     if ($state === null) {
         return;
+    }
+    if (!empty($state['lookup_failed'])) {
+        renderTenantUnavailable();
+        exit;
     }
 
     // La fecha se evalúa en cada request, también cuando la fila proviene de
@@ -106,7 +132,7 @@ function getTenantAccessState($ruc)
         return $state;
     } catch (Throwable $e) {
         error_log('[tenant-check] PDO error ruc=' . $ruc . ': ' . $e->getMessage());
-        return null;
+        return ['lookup_failed' => true];
     }
 }
 
@@ -117,6 +143,9 @@ function getTenantActiveStatus($ruc)
 {
     $state = getTenantAccessState($ruc);
     if ($state === null) {
+        return null;
+    }
+    if (!empty($state['lookup_failed'])) {
         return null;
     }
     if (($state['mode'] ?? 'production') === 'demo'
@@ -218,4 +247,23 @@ function renderSuspendedPage($reason = '')
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store, no-cache, must-revalidate');
     include __DIR__ . '/suspended.php';
+}
+
+function renderTenantSelectionError($status)
+{
+    http_response_code($status);
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    echo $status === 404
+        ? 'La instalación solicitada no existe.'
+        : 'El identificador de instalación no es válido.';
+}
+
+function renderTenantUnavailable()
+{
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Retry-After: 30');
+    echo 'No se pudo verificar temporalmente el acceso a la instalación. Intente nuevamente.';
 }

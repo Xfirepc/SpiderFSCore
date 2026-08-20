@@ -1,5 +1,6 @@
 <?php
-$ruc = htmlspecialchars($_COOKIE['ruc'] ?? $_SERVER['HTTP_X_RUC'] ?? '', ENT_QUOTES, 'UTF-8');
+$selector = function_exists('getTenantSelector') ? getTenantSelector() : null;
+$ruc = htmlspecialchars($selector ?? '', ENT_QUOTES, 'UTF-8');
 $isTrialExpired = ($GLOBALS['sbSuspensionReason'] ?? '') === 'trial_expired';
 ?>
 <!DOCTYPE html>
