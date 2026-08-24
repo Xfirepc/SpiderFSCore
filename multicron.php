@@ -4,7 +4,6 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/Plugins/SpiderTools/vendor/autoload.php';
 require_once __DIR__ . '/proxy.php';
 
-// cargamos la configuración
 const FS_FOLDER = __DIR__;
 $configFile = getConfigFile();
 
@@ -12,35 +11,79 @@ if (file_exists($configFile)) {
     require_once $configFile;
 }
 
-// desactivamos el tiempo de ejecución y el aborto de la conexión
 @set_time_limit(0);
 ignore_user_abort(true);
 
+$lockDir = FS_FOLDER . '/MyFiles';
+if (!is_dir($lockDir)) {
+    @mkdir($lockDir, 0775, true);
+}
+$lockFile = $lockDir . '/.multicron.lock';
+$lock = fopen($lockFile, 'c');
+if ($lock === false) {
+    fwrite(STDERR, "multicron: no se pudo abrir $lockFile\n");
+    exit(1);
+}
+if (!flock($lock, LOCK_EX | LOCK_NB)) {
+    echo "multicron: ya hay una ejecución en curso, se omite este ciclo\n";
+    fclose($lock);
+    exit(0);
+}
 
-// Usar cliente de guzzle para enviar una solicitud POST a una URL específica pasandole headers y parametros
-// Ejecutar docker exec -it multispider-php-1 php multicron.php --uri=http://multispider.mm
+register_shutdown_function(static function () use ($lock) {
+    flock($lock, LOCK_UN);
+    fclose($lock);
+});
+
 $opt = getopt('', ['uri::']);
 
+use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use GuzzleHttp\Client;
+
 $client = new Client([
     'base_uri' => $opt['uri'],
-    'timeout'  => 120.0,
+    'timeout' => 45.0,
+    'connect_timeout' => 5.0,
+    'http_errors' => false,
 ]);
 
+$started = microtime(true);
+$ok = 0;
+$failed = 0;
+$skipped = 0;
 
-$installations = (new \FacturaScripts\Dinamic\Model\SBInstallation())->all();
+$where = [new DataBaseWhere('active', true)];
+$installations = (new \FacturaScripts\Dinamic\Model\SBInstallation())->all($where);
 foreach ($installations as $installation) {
-    $ruc = $installation->cifnif;
+    $ruc = trim((string) $installation->cifnif);
+    if ($ruc === '') {
+        $skipped++;
+        continue;
+    }
+
     try {
         $response = $client->request('POST', '/cron', [
             'headers' => [
                 'X-RUC' => $ruc,
             ],
         ]);
-        echo "Cron ejecutado para {$ruc} {$installation->nombrecorto}";
-        echo $response->getBody()->getContents();
+        $code = $response->getStatusCode();
+        $body = (string) $response->getBody();
+        if ($code >= 200 && $code < 300) {
+            $ok++;
+            echo "Cron ejecutado para {$ruc} {$installation->nombrecorto}\n";
+            echo $body;
+        } else {
+            $failed++;
+            echo "Error HTTP {$code} al ejecutar cron para {$ruc} {$installation->nombrecorto}\n";
+            echo $body;
+        }
     } catch (Exception $exception) {
+        $failed++;
         echo 'Error al ejecutar cron para ' . $ruc . "\n";
-        echo $exception->getMessage();
+        echo $exception->getMessage() . "\n";
     }
 }
+
+$elapsed = round(microtime(true) - $started, 1);
+echo "\nmulticron: ok={$ok} fail={$failed} skip={$skipped} {$elapsed}s\n";
