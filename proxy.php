@@ -9,7 +9,10 @@ function getConfigFile()
 
     $ruc = $selection['value'];
     if (isHostDatabaseSelector($ruc)) {
-        if ($selection['source'] === 'cookie') {
+        // La cookie con el nombre de la BD host es un residuo del BFF.
+        // La cookie con el RUC de la empresa host debe conservarse: el login
+        // la usa para mostrar usuario/clave en lugar de volver al formulario RUC.
+        if ($selection['source'] === 'cookie' && !isHostCompanySelector($ruc)) {
             clearTenantSelectorCookie();
         }
         return __DIR__ . '/config.php';
@@ -76,7 +79,60 @@ function isHostDatabaseSelector($selector)
     }
 
     $config = loadHostDatabaseConfig();
-    return hash_equals((string)$config['name'], (string)$selector);
+    if (hash_equals((string)$config['name'], (string)$selector)) {
+        return true;
+    }
+
+    return isHostCompanySelector($selector);
+}
+
+function isHostCompanySelector($selector)
+{
+    if ($selector === '') {
+        return false;
+    }
+
+    foreach (getHostCompanyCifs() as $cifnif) {
+        if ($cifnif !== '' && hash_equals($cifnif, (string)$selector)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function getHostCompanyCifs()
+{
+    static $memory = null;
+    if (is_array($memory)) {
+        return $memory;
+    }
+
+    $cacheKey = 'sb_host_company_cifs';
+    if (function_exists('apcu_fetch')) {
+        $hit = apcu_fetch($cacheKey, $success);
+        if ($success && is_array($hit)) {
+            $memory = $hit;
+            return $memory;
+        }
+    }
+
+    try {
+        $pdo = hostDatabaseConnection();
+        $rows = $pdo->query(
+            "SELECT cifnif FROM empresas WHERE cifnif IS NOT NULL AND cifnif <> ''"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        $memory = array_values(array_unique(array_map('strval', $rows)));
+    } catch (Throwable $e) {
+        error_log('[tenant-check] could not load host company cifs: ' . $e->getMessage());
+        return [];
+    }
+
+    if (function_exists('apcu_store')) {
+        apcu_store($cacheKey, $memory, 1800);
+    }
+
+    return $memory;
 }
 
 function clearTenantSelectorCookie()
@@ -178,12 +234,7 @@ function getTenantAccessState($ruc)
 
     try {
         $pdo = hostDatabaseConnection();
-        $stmt = $pdo->prepare(
-            'SELECT active, mode, trial_ends_at, suspension_reason'
-            . ' FROM sb_installations WHERE cifnif = :ruc LIMIT 1'
-        );
-        $stmt->execute([':ruc' => $ruc]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = fetchTenantAccessRow($pdo, $ruc);
 
         if ($row === false) {
             if ($hasApcu) {
@@ -195,8 +246,8 @@ function getTenantAccessState($ruc)
         $state = [
             'active' => (bool)$row['active'],
             'mode' => $row['mode'] ?: 'production',
-            'trial_ends_at' => $row['trial_ends_at'],
-            'suspension_reason' => $row['suspension_reason'],
+            'trial_ends_at' => $row['trial_ends_at'] ?? null,
+            'suspension_reason' => $row['suspension_reason'] ?? null,
         ];
         if ($hasApcu) {
             apcu_store($cacheKey, $state, 1800);
@@ -206,6 +257,43 @@ function getTenantAccessState($ruc)
         error_log('[tenant-check] PDO error ruc=' . $ruc . ': ' . $e->getMessage());
         return ['lookup_failed' => true];
     }
+}
+
+function fetchTenantAccessRow(PDO $pdo, $ruc)
+{
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT active, mode, trial_ends_at, suspension_reason'
+            . ' FROM sb_installations WHERE cifnif = :ruc LIMIT 1'
+        );
+        $stmt->execute([':ruc' => $ruc]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        if (!isUnknownColumnError($e)) {
+            throw $e;
+        }
+
+        error_log('[tenant-check] schema fallback ruc=' . $ruc . ': ' . $e->getMessage());
+        $stmt = $pdo->prepare(
+            'SELECT active FROM sb_installations WHERE cifnif = :ruc LIMIT 1'
+        );
+        $stmt->execute([':ruc' => $ruc]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row === false) {
+            return false;
+        }
+
+        $row['mode'] = 'production';
+        $row['trial_ends_at'] = null;
+        $row['suspension_reason'] = null;
+        return $row;
+    }
+}
+
+function isUnknownColumnError(Throwable $e): bool
+{
+    $code = $e instanceof PDOException ? (string)$e->getCode() : '';
+    return $code === '42S22' || strpos($e->getMessage(), 'Unknown column') !== false;
 }
 
 /**
