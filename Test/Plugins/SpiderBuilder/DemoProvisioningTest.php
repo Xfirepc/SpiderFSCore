@@ -9,8 +9,8 @@ use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoHostGuard;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoIdentity;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoRegistrationService;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\MenuAccessSync;
-use FacturaScripts\Plugins\SpiderBuilder\Lib\MasterConfig;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\TenantProvisioner;
+use FacturaScripts\Plugins\SpiderBuilder\Lib\Tools\FiscalNum;
 use FacturaScripts\Core\Base\TenantMenuPolicy;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -158,21 +158,11 @@ class DemoProvisioningTest extends TestCase
         $this->assertFalse(TenantMenuPolicy::isExempt('ListFacturaCliente'));
     }
 
-    public function testMasterConfigReadsApiKeyWithoutLoadingTheFile(): void
+    public function testFiscalNumOwnsItsSriServiceCredential(): void
     {
-        $path = tempnam(sys_get_temp_dir(), 'sb-master-config-');
-        $this->assertNotFalse($path);
+        $key = (new \ReflectionClass(FiscalNum::class))->getConstant('KEY');
 
-        try {
-            file_put_contents($path, "<?php\ndefine('FS_API_KEY', 'tenant-safe-test-key');\n");
-
-            $this->assertSame(
-                'tenant-safe-test-key',
-                MasterConfig::valueFromFile($path, 'FS_API_KEY')
-            );
-            $this->assertSame('', MasterConfig::valueFromFile($path, 'FS_DB_PASS'));
-        } finally {
-            @unlink($path);
-        }
+        $this->assertIsString($key);
+        $this->assertNotSame('', trim($key));
     }
 }

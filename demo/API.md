@@ -49,9 +49,10 @@ define('FS_DB_NAME', 'base_de_datos_master');
 define('FS_API_KEY', 'clave-api-vigente');
 ```
 
-`FS_API_KEY` autentica tanto las llamadas internas del BFF como la consulta al
-SRI; no se duplica en Settings, Docker ni variables de entorno. Las URLs se
-generan automáticamente desde `default.site_url`:
+`FS_API_KEY` autentica exclusivamente las llamadas internas del BFF a la API de
+FacturaScripts. La consulta al SRI utiliza la credencial del proveedor
+encapsulada en `FiscalNum`; no se configura en Settings, Docker, el master ni
+los tenants. Las URLs se generan automáticamente desde `default.site_url`:
 
 - Activación: `https://tu-dominio.com/demo/index.php`.
 - Acceso: `https://tu-dominio.com/login?action=check-ruc&ruc=...`.

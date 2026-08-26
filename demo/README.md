@@ -13,9 +13,10 @@ URLs públicas se derivan de `default.site_url`. En Settings solo queda
 `demo_mail_limit`.
 
 En cada llamada interna el BFF envía `X-RUC: <FS_DB_NAME>` y
-`X-Auth-Token: <FS_API_KEY>`. La misma `FS_API_KEY` es usada por la consulta al
-SRI; no existe una segunda clave de servicio. El proxy debe aplicar el límite
-de tráfico y, si termina TLS, enviar `X-Forwarded-Proto`.
+`X-Auth-Token: <FS_API_KEY>`. Esta clave autentica únicamente la API de
+FacturaScripts. La consulta al SRI usa la credencial del proveedor encapsulada
+en `FiscalNum` y no requiere configuración por tenant. El proxy debe aplicar el
+límite de tráfico y, si termina TLS, enviar `X-Forwarded-Proto`.
 
 La API de FacturaScripts debe estar activa y `FS_API_KEY` debe contener la clave
 vigente del sistema. Restrinja en el proxy el acceso público directo a `/api/3`:
