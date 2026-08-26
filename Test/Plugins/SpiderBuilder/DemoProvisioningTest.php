@@ -9,6 +9,7 @@ use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoHostGuard;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoIdentity;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoRegistrationService;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\MenuAccessSync;
+use FacturaScripts\Plugins\SpiderBuilder\Lib\MasterConfig;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\TenantProvisioner;
 use FacturaScripts\Core\Base\TenantMenuPolicy;
 use PHPUnit\Framework\TestCase;
@@ -155,5 +156,23 @@ class DemoProvisioningTest extends TestCase
         $this->assertTrue(TenantMenuPolicy::isExempt('ApiRoot'));
         $this->assertTrue(TenantMenuPolicy::isExempt('ApiCreateFacturaCliente'));
         $this->assertFalse(TenantMenuPolicy::isExempt('ListFacturaCliente'));
+    }
+
+    public function testMasterConfigReadsApiKeyWithoutLoadingTheFile(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'sb-master-config-');
+        $this->assertNotFalse($path);
+
+        try {
+            file_put_contents($path, "<?php\ndefine('FS_API_KEY', 'tenant-safe-test-key');\n");
+
+            $this->assertSame(
+                'tenant-safe-test-key',
+                MasterConfig::valueFromFile($path, 'FS_API_KEY')
+            );
+            $this->assertSame('', MasterConfig::valueFromFile($path, 'FS_DB_PASS'));
+        } finally {
+            @unlink($path);
+        }
     }
 }
