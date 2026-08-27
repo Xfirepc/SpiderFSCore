@@ -42,10 +42,6 @@ final class DbUpdater
 
     public static function createTable(string $tableName, array $structure = [], string $sqlAfter = ''): bool
     {
-        if (self::isTableChecked($tableName)) {
-            return false;
-        }
-
         if (self::db()->tableExists($tableName)) {
             return false;
         }
@@ -63,7 +59,9 @@ final class DbUpdater
             return true;
         }
 
-        self::save($tableName);
+        // Do not cache failed creations. A later model instantiation must be
+        // able to retry, otherwise foreign keys can fail because a referenced
+        // table was not created during a previous partial update.
         return false;
     }
 
@@ -106,7 +104,14 @@ final class DbUpdater
             }
 
             $fileData = file_get_contents(Tools::folder('MyFiles', self::FILE_NAME));
-            self::$checkedTables = json_decode($fileData, true) ?? [];
+            $allTables = json_decode($fileData, true) ?? [];
+            $databaseName = defined('FS_DB_NAME') ? FS_DB_NAME : 'default';
+
+            // The filesystem can be shared by several tenants. Never reuse a
+            // table cache generated for another database.
+            self::$checkedTables = is_array($allTables[$databaseName] ?? null)
+                ? $allTables[$databaseName]
+                : [];
         }
 
         return in_array($tableName, self::$checkedTables);
@@ -300,9 +305,22 @@ final class DbUpdater
 
         Tools::folderCheckOrCreate(Tools::folder('MyFiles'));
 
+        $file = Tools::folder('MyFiles', self::FILE_NAME);
+        $allTables = [];
+        if (file_exists($file)) {
+            $allTables = json_decode(file_get_contents($file), true) ?? [];
+        }
+        if (array_is_list($allTables)) {
+            // Legacy format was a single list shared by all databases and is
+            // intentionally not migrated because its tenant is unknown.
+            $allTables = [];
+        }
+        $databaseName = defined('FS_DB_NAME') ? FS_DB_NAME : 'default';
+        $allTables[$databaseName] = array_values(array_unique(self::$checkedTables));
+
         file_put_contents(
-            Tools::folder('MyFiles', self::FILE_NAME),
-            json_encode(self::$checkedTables, JSON_PRETTY_PRINT)
+            $file,
+            json_encode($allTables, JSON_PRETTY_PRINT)
         );
     }
 
