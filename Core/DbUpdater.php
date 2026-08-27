@@ -310,7 +310,10 @@ final class DbUpdater
         if (file_exists($file)) {
             $allTables = json_decode(file_get_contents($file), true) ?? [];
         }
-        if (array_is_list($allTables)) {
+        // Keep compatibility with PHP versions before 8.1, where
+        // array_is_list() does not exist.
+        $isLegacyList = [] === $allTables || array_keys($allTables) === range(0, count($allTables) - 1);
+        if ($isLegacyList) {
             // Legacy format was a single list shared by all databases and is
             // intentionally not migrated because its tenant is unknown.
             $allTables = [];
