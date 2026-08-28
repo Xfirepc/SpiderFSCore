@@ -430,6 +430,13 @@ class InvoiceToAccounting extends AccountingClass
             return false;
         }
 
+        $periodClass = '\\FacturaScripts\\Plugins\\SpiderAccounting\\Model\\PeriodoContable';
+        $date = $this->document->fechadevengo ?? $this->document->fecha;
+        if (class_exists($periodClass) && false === $periodClass::isDateOpen((int)$this->document->idempresa, $date)) {
+            Tools::log()->warning('closed-accounting-period');
+            return false;
+        }
+
         if (false === $this->exercise->loadFromCode($this->document->codejercicio) || false === $this->exercise->isOpened()) {
             Tools::log()->warning('closed-exercise', ['%exerciseName%' => $this->document->codejercicio]);
             return false;
@@ -482,6 +489,7 @@ class InvoiceToAccounting extends AccountingClass
             $this->addPurchaseIrpfLines($entry) &&
             $this->addPurchaseSuppliedLines($entry) &&
             $this->addGoodsPurchaseLine($entry) &&
+            $this->addCurrencyConversionRoundingLine($entry) &&
             $entry->isBalanced()) {
             $this->document->idasiento = $entry->primaryColumnValue();
             return;
@@ -513,6 +521,7 @@ class InvoiceToAccounting extends AccountingClass
             $this->addSalesIrpfLines($entry) &&
             $this->addSalesSuppliedLines($entry) &&
             $this->addGoodsSalesLine($entry) &&
+            $this->addCurrencyConversionRoundingLine($entry) &&
             $entry->isBalanced()) {
             $this->document->idasiento = $entry->primaryColumnValue();
             return;
@@ -536,7 +545,7 @@ class InvoiceToAccounting extends AccountingClass
         $entry->documento = $this->document->codigo;
         $entry->fecha = $this->document->fechadevengo ?? $this->document->fecha;
         $entry->idempresa = $this->document->idempresa;
-        $entry->importe = $this->document->total;
+        $entry->importe = abs($this->functionalAmount($this->document->total));
 
         // Assign analytical data defined in Serie model
         $serie = new Serie();
@@ -544,5 +553,42 @@ class InvoiceToAccounting extends AccountingClass
 
         $entry->iddiario = $serie->iddiario;
         $entry->canal = $serie->canal;
+    }
+
+    /**
+     * Converting each tax and revenue/expense component independently may
+     * leave a cent-level rounding residual. We post only bounded conversion
+     * residuals; larger imbalances still fail instead of being concealed.
+     */
+    protected function addCurrencyConversionRoundingLine(Asiento $entry): bool
+    {
+        $lines = $entry->getLines();
+        $debit = 0.0;
+        $credit = 0.0;
+        foreach ($lines as $line) {
+            $debit += (float)$line->debe;
+            $credit += (float)$line->haber;
+        }
+        $difference = round($debit - $credit, FS_NF0);
+        if (abs($difference) < 0.005) {
+            return true;
+        }
+
+        $rate = property_exists($this->document, 'tasaconv') ? (float)$this->document->tasaconv : 1.0;
+        $maximumRounding = max(0.02, count($lines) * 0.01);
+        if ($rate <= 0 || abs($rate - 1.0) < 0.000001 || abs($difference) > $maximumRounding) {
+            return false;
+        }
+
+        $account = $this->getSpecialSubAccount($difference > 0 ? 'CAMPOS' : 'CAMNEG');
+        if (false === $account->exists()) {
+            Tools::log()->warning('exchange-difference-account-not-found');
+            return false;
+        }
+        $line = $entry->getNewLine($account);
+        $line->concepto = Tools::lang()->trans('currency-conversion-rounding');
+        $line->debe = $difference < 0 ? abs($difference) : 0.0;
+        $line->haber = $difference > 0 ? $difference : 0.0;
+        return $line->save();
     }
 }

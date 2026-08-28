@@ -1,6 +1,7 @@
 codcuentaesp;descripcion
 "ACREED";"Cuentas de acreedores"
 "ANTCLI";"Anticipos de clientes"
+"ANTPRO";"Anticipos a proveedores"
 "CAJA";"Cuentas de caja"
 "CAMNEG";"Cuentas de diferencias negativas de cambio"
 "CAMPOS";"Cuentas de diferencias positivas de cambio"
@@ -17,6 +18,7 @@ codcuentaesp;descripcion
 "IRPF";"Cuentas de retenciones IRPF"
 "IRPFA";"IRPF para alquileres"
 "IRPFPR";"Cuentas de retenciones para proveedores IRPF"
+"INV";"Inventario para la venta"
 "IVAACR";"Cuentas acreedoras de IVA en la regularización"
 "IVADEU";"Cuentas deudoras de IVA en la regularización"
 "IVAEUE";"IVA en entregas intracomunitarias U.E."

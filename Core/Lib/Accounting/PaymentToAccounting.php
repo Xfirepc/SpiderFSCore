@@ -26,6 +26,8 @@ use FacturaScripts\Core\Model\ReciboCliente;
 use FacturaScripts\Core\Model\ReciboProveedor;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Model\Asiento as DinAsiento;
+use FacturaScripts\Dinamic\Model\CuentaBanco as DinCuentaBanco;
+use FacturaScripts\Dinamic\Model\CuentaEspecial as DinCuentaEspecial;
 use FacturaScripts\Dinamic\Model\Ejercicio;
 
 /**
@@ -74,6 +76,12 @@ class PaymentToAccounting
                     ]);
                     return false;
                 }
+                $periodClass = '\\FacturaScripts\\Plugins\\SpiderAccounting\\Model\\PeriodoContable';
+                if (class_exists($periodClass)
+                    && false === $periodClass::isDateOpen((int)$this->receipt->idempresa, $this->payment->fecha)) {
+                    Tools::log()->warning('closed-accounting-period');
+                    return false;
+                }
                 break;
         }
 
@@ -103,7 +111,7 @@ class PaymentToAccounting
             ' - ' . $invoice->nombrecliente;
 
         $this->setCommonData($entry, $concept, $invoice);
-        $entry->importe += $this->payment->gastos;
+        $entry->importe = $this->customerEntryAmount();
         if (false === $entry->save()) {
             Tools::log()->warning('accounting-entry-error');
             return false;
@@ -113,6 +121,7 @@ class PaymentToAccounting
         if ($this->customerPaymentLine($entry)
             && $this->customerPaymentBankLine($entry)
             && $this->customerPaymentExpenseLine($entry)
+            && $this->paymentExchangeDifferenceLine($entry)
             && $entry->isBalanced()) {
             $this->payment->idasiento = $entry->primaryColumnValue();
             return true;
@@ -125,16 +134,21 @@ class PaymentToAccounting
 
     protected function customerPaymentBankLine(Asiento &$entry): bool
     {
-        $account = $this->payment->getPaymentMethod()->getSubcuenta($this->exercise->codejercicio, true);
+        $account = $this->getTreasuryAccount(false);
         if (false === $account->exists()) {
             return false;
         }
 
-        $amount = $this->payment->importe + abs($this->payment->gastos);
+        // In FacturaScripts, customer receipt expenses are charged to the
+        // customer and therefore increase the amount received by treasury.
+        // Bank fees borne by the company are posted from SpiderBanks instead.
+        $amount = $this->functionalAmount($this->payment->importe)
+            + abs($this->functionalAmount($this->payment->gastos));
 
         $newLine = $entry->getNewLine($account);
         $newLine->debe = max($amount, 0);
         $newLine->haber = $amount < 0 ? abs($amount) : 0;
+        $this->setCurrencyData($newLine);
         return $newLine->save();
     }
 
@@ -144,11 +158,15 @@ class PaymentToAccounting
             return true;
         }
 
-        $account = $this->payment->getPaymentMethod()->getSubcuentaGastos($this->exercise->codejercicio, true);
+        $account = $this->getTreasuryAccount(true);
+        if (false === $account->exists()) {
+            return false;
+        }
 
         $expLine = $entry->getNewLine($account);
         $expLine->concepto = Tools::lang()->trans('receipt-expense-account', ['%document%' => $entry->documento]);
-        $expLine->haber = abs($this->payment->gastos);
+        $expLine->haber = abs($this->functionalAmount($this->payment->gastos));
+        $this->setCurrencyData($expLine);
         return $expLine->save();
     }
 
@@ -160,8 +178,10 @@ class PaymentToAccounting
         }
 
         $newLine = $entry->getNewLine($account);
-        $newLine->debe = $this->payment->importe < 0 ? abs($this->payment->importe) : 0;
-        $newLine->haber = max($this->payment->importe, 0);
+        $amount = $this->invoiceFunctionalAmount($this->payment->importe);
+        $newLine->debe = $amount < 0 ? abs($amount) : 0;
+        $newLine->haber = max($amount, 0);
+        $this->setInvoiceCurrencyData($newLine);
         return $newLine->save();
     }
 
@@ -188,6 +208,7 @@ class PaymentToAccounting
         // Add lines and save accounting entry relation
         if ($this->supplierPaymentLine($entry)
             && $this->supplierPaymentBankLine($entry)
+            && $this->paymentExchangeDifferenceLine($entry)
             && $entry->isBalanced()) {
             $this->payment->idasiento = $entry->primaryColumnValue();
             return true;
@@ -200,14 +221,16 @@ class PaymentToAccounting
 
     protected function supplierPaymentBankLine(Asiento &$entry): bool
     {
-        $account = $this->payment->getPaymentMethod()->getSubcuenta($this->exercise->codejercicio, true);
+        $account = $this->getTreasuryAccount(false);
         if (false === $account->exists()) {
             return false;
         }
 
         $newLine = $entry->getNewLine($account);
-        $newLine->debe = $this->payment->importe < 0 ? abs($this->payment->importe) : 0;
-        $newLine->haber = max($this->payment->importe, 0);
+        $amount = $this->functionalAmount($this->payment->importe);
+        $newLine->debe = $amount < 0 ? abs($amount) : 0;
+        $newLine->haber = max($amount, 0);
+        $this->setCurrencyData($newLine);
         return $newLine->save();
     }
 
@@ -219,8 +242,10 @@ class PaymentToAccounting
         }
 
         $newLine = $entry->getNewLine($account);
-        $newLine->debe = max($this->payment->importe, 0);
-        $newLine->haber = $this->payment->importe < 0 ? abs($this->payment->importe) : 0;
+        $amount = $this->invoiceFunctionalAmount($this->payment->importe);
+        $newLine->debe = max($amount, 0);
+        $newLine->haber = $amount < 0 ? abs($amount) : 0;
+        $this->setInvoiceCurrencyData($newLine);
         return $newLine->save();
     }
 
@@ -232,6 +257,128 @@ class PaymentToAccounting
         $entry->canal = $invoice->getSerie()->canal;
         $entry->fecha = $this->payment->fecha;
         $entry->idempresa = $this->exercise->idempresa;
-        $entry->importe = $this->payment->importe;
+        $entry->importe = max(
+            abs($this->functionalAmount($this->payment->importe)),
+            abs($this->invoiceFunctionalAmount($this->payment->importe))
+        );
+    }
+
+    protected function customerEntryAmount(): float
+    {
+        $bankAmount = $this->functionalAmount($this->payment->importe)
+            + abs($this->functionalAmount($this->payment->gastos));
+        $subjectAmount = $this->invoiceFunctionalAmount($this->payment->importe);
+        $expenses = abs($this->functionalAmount($this->payment->gastos));
+
+        $debit = max($bankAmount, 0.0) + ($subjectAmount < 0.0 ? abs($subjectAmount) : 0.0);
+        $credit = ($bankAmount < 0.0 ? abs($bankAmount) : 0.0)
+            + max($subjectAmount, 0.0)
+            + $expenses;
+        return max($debit, $credit);
+    }
+
+    protected function functionalAmount($amount): float
+    {
+        $rate = property_exists($this->payment, 'tasaconv') ? (float)$this->payment->tasaconv : 1.0;
+        if ($rate <= 0) {
+            $rate = 1.0;
+        }
+        return round((float)$amount / $rate, FS_NF0);
+    }
+
+    protected function invoiceFunctionalAmount($amount): float
+    {
+        $invoice = $this->receipt->getInvoice();
+        $rate = property_exists($invoice, 'tasaconv') ? (float)$invoice->tasaconv : 1.0;
+        if ($rate <= 0) {
+            $rate = 1.0;
+        }
+        return round((float)$amount / $rate, FS_NF0);
+    }
+
+    protected function paymentExchangeDifferenceLine(Asiento &$entry): bool
+    {
+        $debit = 0.0;
+        $credit = 0.0;
+        foreach ($entry->getLines() as $line) {
+            $debit += (float)$line->debe;
+            $credit += (float)$line->haber;
+        }
+
+        $difference = round($debit - $credit, FS_NF0);
+        if (abs($difference) < 0.005) {
+            return true;
+        }
+
+        // Excess debit is an exchange gain (credit); excess credit is an
+        // exchange loss (debit). This also works for refunds and supplier
+        // collections because it balances the economic direction already
+        // represented by the subject and bank lines.
+        $specialCode = $difference > 0 ? 'CAMPOS' : 'CAMNEG';
+        $special = new DinCuentaEspecial();
+        if (false === $special->loadFromCode($specialCode)) {
+            Tools::log()->warning('exchange-difference-account-not-found', ['%account%' => $specialCode]);
+            return false;
+        }
+        $account = $special->getSubcuenta($this->exercise->codejercicio);
+        if (false === $account->exists()) {
+            Tools::log()->warning('exchange-difference-account-not-found', ['%account%' => $specialCode]);
+            return false;
+        }
+
+        $line = $entry->getNewLine($account);
+        $line->concepto = Tools::lang()->trans('realized-exchange-difference');
+        $line->debe = $difference < 0 ? abs($difference) : 0.0;
+        $line->haber = $difference > 0 ? $difference : 0.0;
+        return $line->save();
+    }
+
+    protected function getTreasuryAccount(bool $expenses)
+    {
+        $method = $this->payment->getPaymentMethod();
+        $bankCode = property_exists($this->payment, 'codcuentabanco')
+            ? (string)$this->payment->codcuentabanco
+            : '';
+        if ('' === $bankCode && property_exists($this->receipt, 'codcuentabanco')) {
+            $bankCode = (string)$this->receipt->codcuentabanco;
+        }
+
+        if ('' !== $bankCode) {
+            $bank = new DinCuentaBanco();
+            if (false === $bank->loadFromCode($bankCode) || (int)$bank->idempresa !== (int)$this->receipt->idempresa) {
+                Tools::log()->warning('invalid-payment-bank-account');
+                return new \FacturaScripts\Dinamic\Model\Subcuenta();
+            }
+            return $expenses
+                ? $bank->getSubcuentaGastos($this->exercise->codejercicio, true)
+                : $bank->getSubcuenta($this->exercise->codejercicio, true);
+        }
+
+        // Backwards-compatible default. The payment method still owns the
+        // default bank; a payment/receipt can override it when SpiderPagos is active.
+        return $expenses
+            ? $method->getSubcuentaGastos($this->exercise->codejercicio, true)
+            : $method->getSubcuenta($this->exercise->codejercicio, true);
+    }
+
+    protected function setCurrencyData($line): void
+    {
+        if (property_exists($this->payment, 'coddivisa') && !empty($this->payment->coddivisa)) {
+            $line->coddivisa = $this->payment->coddivisa;
+        }
+        if (property_exists($this->payment, 'tasaconv') && (float)$this->payment->tasaconv > 0) {
+            $line->tasaconv = (float)$this->payment->tasaconv;
+        }
+    }
+
+    protected function setInvoiceCurrencyData($line): void
+    {
+        $invoice = $this->receipt->getInvoice();
+        if (property_exists($invoice, 'coddivisa') && !empty($invoice->coddivisa)) {
+            $line->coddivisa = $invoice->coddivisa;
+        }
+        if (property_exists($invoice, 'tasaconv') && (float)$invoice->tasaconv > 0) {
+            $line->tasaconv = (float)$invoice->tasaconv;
+        }
     }
 }

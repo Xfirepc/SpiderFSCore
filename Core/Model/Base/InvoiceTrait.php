@@ -230,10 +230,18 @@ trait InvoiceTrait
             return false;
         }
 
-        // create a new accounting entry
+        // In installations with an explicit posting policy, saving an
+        // unposted invoice must never create its journal entry implicitly.
+        // The standard "generate-accounting" action remains available and
+        // is the only path that posts it.
         $this->idasiento = null;
-        $tool = new InvoiceToAccounting();
-        $tool->generate($this);
+        $guardClass = '\\FacturaScripts\\Plugins\\SpiderAccounting\\Lib\\Accounting\\AccountingGuard';
+        $explicitPosting = class_exists($guardClass)
+            && $guardClass::requiresExplicitInvoicePosting();
+        if (false === $explicitPosting) {
+            $tool = new InvoiceToAccounting();
+            $tool->generate($this);
+        }
 
         // check receipts
         $generator = new ReceiptGenerator();

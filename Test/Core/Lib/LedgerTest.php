@@ -21,6 +21,7 @@ namespace FacturaScripts\Test\Core\Lib;
 
 use FacturaScripts\Core\Lib\Accounting\Ledger;
 use FacturaScripts\Core\Model\Asiento;
+use FacturaScripts\Core\Tools;
 use FacturaScripts\Test\Traits\DefaultSettingsTrait;
 use PHPUnit\Framework\TestCase;
 
@@ -74,5 +75,61 @@ final class LedgerTest extends TestCase
 
         // eliminamos
         $this->assertTrue($asiento->delete(), 'asiento-cant-delete');
+    }
+
+    public function testGroupedSubaccountCarriesOpeningBalance()
+    {
+        $exercise = new \FacturaScripts\Dinamic\Model\Ejercicio();
+        $exercise->idempresa = Tools::settings('default', 'idempresa');
+        $this->assertTrue($exercise->loadFromDate(Tools::date(), true, false), 'exercise-not-found');
+        $openingDate = $exercise->fechainicio;
+        $currentDate = date('d-m-Y', strtotime($openingDate . ' +1 day'));
+
+        $opening = new Asiento();
+        $opening->concepto = 'Saldo anterior mayor';
+        $opening->fecha = $openingDate;
+        $this->assertTrue($opening->save(), 'opening-entry-cant-save');
+
+        $line = $opening->getNewLine();
+        $line->codsubcuenta = '1000000000';
+        $line->concepto = 'Saldo anterior';
+        $line->debe = 75;
+        $this->assertTrue($line->save(), 'opening-line-cant-save');
+
+        $counterpart = $opening->getNewLine();
+        $counterpart->codsubcuenta = '5700000000';
+        $counterpart->concepto = 'Contrapartida';
+        $counterpart->haber = 75;
+        $this->assertTrue($counterpart->save(), 'opening-counterpart-cant-save');
+
+        $current = new Asiento();
+        $current->concepto = 'Movimiento actual mayor';
+        $current->fecha = $currentDate;
+        $this->assertTrue($current->save(), 'current-entry-cant-save');
+
+        $line = $current->getNewLine();
+        $line->codsubcuenta = '1000000000';
+        $line->concepto = 'Movimiento actual';
+        $line->debe = 25;
+        $this->assertTrue($line->save(), 'current-line-cant-save');
+
+        $counterpart = $current->getNewLine();
+        $counterpart->codsubcuenta = '5700000000';
+        $counterpart->concepto = 'Contrapartida actual';
+        $counterpart->haber = 25;
+        $this->assertTrue($counterpart->save(), 'current-counterpart-cant-save');
+
+        $ledger = new Ledger();
+        $pages = $ledger->generate($exercise->idempresa, $currentDate, $currentDate, [
+            'grouped' => 'S',
+            'subaccount-from' => '1000000000',
+            'subaccount-to' => '1000000000',
+        ]);
+
+        $this->assertSame('75.00', $pages['1000000000'][0]['saldo']);
+        $this->assertSame('100.00', $pages['1000000000'][1]['saldo']);
+
+        $this->assertTrue($current->delete(), 'current-entry-cant-delete');
+        $this->assertTrue($opening->delete(), 'opening-entry-cant-delete');
     }
 }

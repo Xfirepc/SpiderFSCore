@@ -126,7 +126,7 @@ abstract class AccountingClass extends AccountingAccounts
         }
 
         // add tax register data
-        $line->baseimponible = (float)$values['neto'];
+        $line->baseimponible = $this->functionalAmount($values['neto']);
         $line->iva = 0;
         $line->recargo = (float)$values['recargo'];
         $line->cifnif = $this->document->cifnif;
@@ -161,7 +161,7 @@ abstract class AccountingClass extends AccountingAccounts
         }
 
         // add tax register data
-        $line->baseimponible = (float)$values['neto'];
+        $line->baseimponible = $this->functionalAmount($values['neto']);
         $line->iva = (float)$values['iva'];
         $line->recargo = 0;
         $line->cifnif = $this->document->cifnif;
@@ -188,7 +188,9 @@ abstract class AccountingClass extends AccountingAccounts
         $line = $accountEntry->getNewLine();
         $line->setAccount($subaccount);
 
-        $total = ($amount === null) ? $this->document->total : $amount;
+        $originalTotal = ($amount === null) ? $this->document->total : $amount;
+        $total = $this->functionalAmount($originalTotal);
+        $this->setDocumentCurrency($line);
         if ($isDebit) {
             $line->debe = max($total, 0);
             $line->haber = $total < 0 ? abs($total) : 0;
@@ -198,6 +200,30 @@ abstract class AccountingClass extends AccountingAccounts
         $line->debe = $total < 0 ? abs($total) : 0;
         $line->haber = max($total, 0);
         return $line;
+    }
+
+    /**
+     * Journal amounts are always stored in the company's functional currency.
+     * FacturaScripts exchange rates represent document-currency units per one
+     * functional-currency unit, hence the division.
+     */
+    protected function functionalAmount($amount): float
+    {
+        $rate = property_exists($this->document, 'tasaconv') ? (float)$this->document->tasaconv : 1.0;
+        if ($rate <= 0) {
+            $rate = 1.0;
+        }
+        return round((float)$amount / $rate, FS_NF0);
+    }
+
+    protected function setDocumentCurrency($line): void
+    {
+        if (property_exists($this->document, 'coddivisa') && !empty($this->document->coddivisa)) {
+            $line->coddivisa = $this->document->coddivisa;
+        }
+        if (property_exists($this->document, 'tasaconv') && (float)$this->document->tasaconv > 0) {
+            $line->tasaconv = (float)$this->document->tasaconv;
+        }
     }
 
     /**

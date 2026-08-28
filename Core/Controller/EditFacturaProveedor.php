@@ -152,18 +152,34 @@ class EditFacturaProveedor extends PurchasesController
             return true;
         }
 
+        $ownsTransaction = false === $this->dataBase->inTransaction();
+        if ($ownsTransaction && false === $this->dataBase->beginTransaction()) {
+            Tools::log()->error('accounting-transaction-error');
+            return true;
+        }
+
         $generator = new InvoiceToAccounting();
         $generator->generate($invoice);
         if (empty($invoice->idasiento)) {
+            if ($ownsTransaction && $this->dataBase->inTransaction()) {
+                $this->dataBase->rollback();
+            }
             Tools::log()->error('record-save-error');
             return true;
         }
 
         if ($invoice->save()) {
+            if ($ownsTransaction && false === $this->dataBase->commit()) {
+                Tools::log()->error('accounting-transaction-error');
+                return true;
+            }
             Tools::log()->notice('record-updated-correctly');
             return true;
         }
 
+        if ($ownsTransaction && $this->dataBase->inTransaction()) {
+            $this->dataBase->rollback();
+        }
         Tools::log()->error('record-save-error');
         return true;
     }

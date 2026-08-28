@@ -247,6 +247,27 @@ class Ledger
         return 0.00;
     }
 
+    /**
+     * Returns the balance carried forward for one subaccount. Account codes and
+     * subaccount codes are different domains, so this cannot reuse
+     * getCuentaBalance(). Doing so made grouped ledgers start at zero whenever
+     * the requested range began after the first day of the exercise.
+     */
+    protected function getSubcuentaBalance(string $codsubcuenta): float
+    {
+        $sql = 'SELECT SUM(partidas.debe) as debe, SUM(partidas.haber) as haber'
+            . ' FROM partidas'
+            . ' LEFT JOIN asientos ON partidas.idasiento = asientos.idasiento'
+            . ' WHERE partidas.codsubcuenta = ' . $this->dataBase->var2str($codsubcuenta)
+            . ' AND asientos.codejercicio = ' . $this->dataBase->var2str($this->exercise->codejercicio)
+            . ' AND asientos.fecha < ' . $this->dataBase->var2str($this->dateFrom);
+        foreach ($this->dataBase->select($sql) as $row) {
+            return (float)$row['debe'] - (float)$row['haber'];
+        }
+
+        return 0.00;
+    }
+
     protected function processLine(array &$ledger, array $line, array $params): void
     {
         $line = [
@@ -303,32 +324,32 @@ class Ledger
 
     protected function processLineBalanceGroupedBySubAccount(array &$balances, array &$ledger, array $line)
     {
-        $codcuenta = $line['codsubcuenta'];
-        if (!isset($balances[$codcuenta])) {
-            $balances[$codcuenta] = $this->getCuentaBalance($codcuenta);
+        $codsubcuenta = $line['codsubcuenta'];
+        if (!isset($balances[$codsubcuenta])) {
+            $balances[$codsubcuenta] = $this->getSubcuentaBalance($codsubcuenta);
         }
 
-        if (!isset($ledger[$codcuenta])) {
-            $ledger[$codcuenta][] = [
+        if (!isset($ledger[$codsubcuenta])) {
+            $ledger[$codsubcuenta][] = [
                 'asiento' => '',
                 'fecha' => Tools::date($this->dateFrom),
-                'cuenta' => $codcuenta,
+                'cuenta' => $codsubcuenta,
                 'concepto' => Tools::fixHtml($line['subcuentadesc']),
                 'debe' => $this->formatMoney(0, false),
                 'haber' => $this->formatMoney(0, false),
-                'saldo' => $this->formatMoney($balances[$codcuenta], false)
+                'saldo' => $this->formatMoney($balances[$codsubcuenta], false)
             ];
         }
 
-        $balances[$codcuenta] += (float)$line['debe'] - (float)$line['haber'];
-        $ledger[$codcuenta][] = [
+        $balances[$codsubcuenta] += (float)$line['debe'] - (float)$line['haber'];
+        $ledger[$codsubcuenta][] = [
             'asiento' => $line['numero'],
             'fecha' => Tools::date($line['fecha']),
-            'cuenta' => $codcuenta,
+            'cuenta' => $codsubcuenta,
             'concepto' => Tools::fixHtml($line['concepto']),
             'debe' => $this->formatMoney($line['debe'], false),
             'haber' => $this->formatMoney($line['haber'], false),
-            'saldo' => $this->formatMoney($balances[$codcuenta], false)
+            'saldo' => $this->formatMoney($balances[$codsubcuenta], false)
         ];
     }
 }
