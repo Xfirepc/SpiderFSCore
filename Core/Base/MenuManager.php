@@ -35,6 +35,75 @@ use FacturaScripts\Dinamic\Model\User;
  */
 class MenuManager
 {
+    /**
+     * Agrupa el menú plano de contabilidad en áreas funcionales.
+     * Los submenús declarados por un controlador siempre tienen prioridad.
+     */
+    private const ACCOUNTING_SUBMENUS = [
+        // Trabajo contable diario
+        'AccountingReconciliation' => 'accounting-operations',
+        'EditAsiento' => 'accounting-operations',
+        'EditAsientoOrigen' => 'accounting-operations',
+        'EditConceptoPartida' => 'accounting-operations',
+        'EditDiario' => 'accounting-operations',
+        'ImportDocuments' => 'accounting-operations',
+        'ListAsiento' => 'accounting-operations',
+        'ListAsientoOrigen' => 'accounting-operations',
+
+        // Plan contable, períodos y dimensiones analíticas
+        'EditCentroCosto' => 'accounting-planning-control',
+        'EditCuenta' => 'accounting-planning-control',
+        'EditCuentaEspecial' => 'accounting-planning-control',
+        'EditEjercicio' => 'accounting-planning-control',
+        'EditPeriodoContable' => 'accounting-planning-control',
+        'EditProyecto' => 'accounting-planning-control',
+        'EditSubcuenta' => 'accounting-planning-control',
+        'ListCentroCosto' => 'accounting-planning-control',
+        'ListCuenta' => 'accounting-planning-control',
+        'ListEjercicio' => 'accounting-planning-control',
+        'ListPeriodoContable' => 'accounting-planning-control',
+        'ListProyecto' => 'accounting-planning-control',
+
+        // Bancos, formas de pago y liquidaciones de tarjetas
+        'EditAdquirenteTarjeta' => 'accounting-treasury-payments',
+        'EditCuentaBanco' => 'accounting-treasury-payments',
+        'EditFormaPago' => 'accounting-treasury-payments',
+        'EditLiquidacionTarjeta' => 'accounting-treasury-payments',
+        'EditLoteTarjeta' => 'accounting-treasury-payments',
+        'EditPosTarjeta' => 'accounting-treasury-payments',
+        'EditSBExtracto' => 'accounting-treasury-payments',
+        'ListAdquirenteTarjeta' => 'accounting-treasury-payments',
+        'ListFormaPago' => 'accounting-treasury-payments',
+        'ListLiquidacionTarjeta' => 'accounting-treasury-payments',
+        'ListLoteTarjeta' => 'accounting-treasury-payments',
+        'ListSBExtracto' => 'accounting-treasury-payments',
+
+        // Tributación ecuatoriana y SRI
+        'EditImpuesto' => 'accounting-tax-sri',
+        'EditRetencion' => 'accounting-tax-sri',
+        'EditRetencionVenta' => 'accounting-tax-sri',
+        'EditSFConceptoRetencionRenta' => 'accounting-tax-sri',
+        'EditSustentoTributario' => 'accounting-tax-sri',
+        'ListImpuesto' => 'accounting-tax-sri',
+        'ListRetencionVenta' => 'accounting-tax-sri',
+        'ListSFConceptoRetencion' => 'accounting-tax-sri',
+        'ListSustentoTributario' => 'accounting-tax-sri',
+        'SriInbox' => 'accounting-tax-sri',
+
+        // Activos fijos y valoración de inventario
+        'EditActivoFijo' => 'accounting-assets-inventory',
+        'EditCategoriaActivo' => 'accounting-assets-inventory',
+        'ListActivoFijo' => 'accounting-assets-inventory',
+        'ListCategoriaActivo' => 'accounting-assets-inventory',
+        'ListDepreciacion' => 'accounting-assets-inventory',
+        'ListMovimientoInventario' => 'accounting-assets-inventory',
+
+        // Configuración documental y contable
+        'ConfigContableEcuador' => 'accounting-settings',
+        'EditSerie' => 'accounting-settings',
+        'ListSerie' => 'accounting-settings',
+        'ListSFSecuencia' => 'accounting-settings',
+    ];
 
     /**
      * Contains the structure of the menu for the user.
@@ -317,9 +386,6 @@ class MenuManager
     private function loadUserMenu()
     {
         $result = [];
-        $menuValue = null;
-        $submenuValue = null;
-        $menuItem = null;
         $i18n = new CoreTranslator();
 
         // We load the list of pages for the user
@@ -329,27 +395,42 @@ class MenuManager
                 continue;
             }
 
-            // Menu break control
-            if ($menuValue !== $page->menu) {
-                $menuValue = $page->menu;
-                $submenuValue = null;
-                $result[$menuValue] = new MenuItem($menuValue, $i18n->trans($menuValue), '#');
-                $menuItem = &$result[$menuValue]->menu;
+            if (!isset($result[$page->menu])) {
+                $result[$page->menu] = new MenuItem($page->menu, $i18n->trans($page->menu), '#');
+            }
+            $menuItem = &$result[$page->menu]->menu;
+
+            $submenuValue = $this->getPageSubmenu($page);
+            if (!empty($submenuValue)) {
+                if (!isset($menuItem[$submenuValue])) {
+                    $menuItem[$submenuValue] = new MenuItem(
+                        $submenuValue,
+                        $i18n->trans($submenuValue),
+                        '#',
+                        $page->icon
+                    );
+                }
+                $menuItem = &$menuItem[$submenuValue]->menu;
             }
 
-            // Submenu break control
-            if ($submenuValue !== $page->submenu) {
-                $submenuValue = $page->submenu;
-                $menuItem = &$result[$menuValue]->menu;
-                if (!empty($submenuValue)) {
-                    $menuItem[$submenuValue] = new MenuItem($submenuValue, $i18n->trans($submenuValue), '#');
-                    $menuItem = &$menuItem[$submenuValue]->menu;
-                }
-            }
             $menuItem[$page->name] = new MenuItem($page->name, $i18n->trans($page->title), $page->url(), $page->icon);
+            unset($menuItem);
         }
 
         return $this->sortMenu($result);
+    }
+
+    private function getPageSubmenu(Page $page): ?string
+    {
+        if (!empty($page->submenu)) {
+            return $page->submenu;
+        }
+
+        if ($page->menu !== 'accounting') {
+            return null;
+        }
+
+        return self::ACCOUNTING_SUBMENUS[$page->name] ?? null;
     }
 
     /**
@@ -393,12 +474,13 @@ class MenuManager
      */
     private function setActiveMenuItem(&$menu, $pageModel)
     {
+        $pageSubmenu = $this->getPageSubmenu($pageModel);
         foreach ($menu as $key => $menuItem) {
             if ($menuItem->name === $pageModel->name) {
                 $menu[$key]->active = true;
                 self::$menuPageActive = $pageModel;
                 break;
-            } elseif (!empty($pageModel->submenu) && !empty($menuItem->menu) && $menuItem->name === $pageModel->submenu) {
+            } elseif (!empty($pageSubmenu) && !empty($menuItem->menu) && $menuItem->name === $pageSubmenu) {
                 $menu[$key]->active = true;
                 $this->setActiveMenuItem($menu[$key]->menu, $pageModel);
                 break;
