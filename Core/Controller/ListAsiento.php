@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core\Controller;
 
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\DataSrc\Empresas;
 use FacturaScripts\Core\Lib\ExtendedController\ListController;
@@ -48,12 +49,14 @@ class ListAsiento extends ListController
      */
     protected function addLockButton(string $viewName): void
     {
-        $this->addButton($viewName, [
-            'action' => 'lock-entries',
-            'confirm' => true,
-            'icon' => 'fas fa-lock',
-            'label' => 'lock-entry'
-        ]);
+        if (AccountingSettings::isEnabled()) {
+            $this->addButton($viewName, [
+                'action' => 'lock-entries',
+                'confirm' => true,
+                'icon' => 'fas fa-lock',
+                'label' => 'lock-entry'
+            ]);
+        }
     }
 
     /**
@@ -63,12 +66,14 @@ class ListAsiento extends ListController
      */
     protected function addRenumberButton(string $viewName): void
     {
-        $this->addButton($viewName, [
-            'action' => 'renumber',
-            'icon' => 'fas fa-sort-numeric-down',
-            'label' => 'renumber',
-            'type' => 'modal'
-        ]);
+        if (AccountingSettings::isEnabled()) {
+            $this->addButton($viewName, [
+                'action' => 'renumber',
+                'icon' => 'fas fa-sort-numeric-down',
+                'label' => 'renumber',
+                'type' => 'modal'
+            ]);
+        }
     }
 
     /**
@@ -80,6 +85,12 @@ class ListAsiento extends ListController
         $this->createViewsNotBalanced();
         $this->createViewsConcepts();
         $this->createViewsJournals();
+        if (false === AccountingSettings::isEnabled()) {
+            foreach (['ListAsiento', 'ListAsiento-not'] as $viewName) {
+                $this->setSettings($viewName, 'btnNew', false);
+                $this->setSettings($viewName, 'btnDelete', false);
+            }
+        }
     }
 
     protected function createViewsAccountEntries(string $viewName = 'ListAsiento'): void
@@ -188,6 +199,11 @@ class ListAsiento extends ListController
      */
     protected function execPreviousAction($action)
     {
+        if (in_array($action, ['lock-entries', 'renumber'], true)
+            && false === AccountingSettings::requireEnabled()) {
+            return true;
+        }
+
         switch ($action) {
             case 'lock-entries':
                 $this->lockEntriesAction();

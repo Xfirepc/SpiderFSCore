@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core;
 
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Base\MiniLog;
 use FacturaScripts\Core\Base\MyFilesToken;
 use FacturaScripts\Core\DataSrc\Divisas;
@@ -380,6 +381,7 @@ final class Html
         self::$twig->addFunction(self::myFilesUrlFunction());
         self::$twig->addFunction(self::numberFunction());
         self::$twig->addFunction(self::settingsFunction());
+        self::$twig->addFunction(new TwigFunction('accountingEnabled', [AccountingSettings::class, 'isEnabled']));
         self::$twig->addFunction(self::transFunction());
         self::$twig->addFunction(self::bytesFunction());
         foreach (self::$functions as $function) {

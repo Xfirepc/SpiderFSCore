@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core\Model;
 
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Base\Utils;
 use FacturaScripts\Core\Tools;
@@ -154,6 +155,10 @@ class Asiento extends Base\ModelOnChangeClass
 
     public function delete(): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         if (false === $this->editable()) {
             Tools::log()->warning('non-editable-accounting-entry');
             return false;
@@ -293,6 +298,10 @@ class Asiento extends Base\ModelOnChangeClass
      */
     public function renumber(string $codejercicio): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         $exercise = new DinEjercicio();
         if (false === $exercise->loadFromCode($codejercicio)) {
             Tools::log()->error('exercise-not-found', ['%code%' => $codejercicio]);
@@ -323,6 +332,10 @@ class Asiento extends Base\ModelOnChangeClass
 
     public function save(): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         if (empty($this->codejercicio)) {
             $this->setDate($this->fecha);
         }

@@ -42,6 +42,10 @@ class AccountingClosingClosing extends AccountingClosingBase
      */
     public function exec($exercise, $idjournal): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         return $this->delete($exercise) && parent::exec($exercise, $idjournal);
     }
 

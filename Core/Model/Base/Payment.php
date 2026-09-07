@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core\Model\Base;
 
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Lib\Accounting\PaymentToAccounting;
 use FacturaScripts\Dinamic\Model\Asiento;
@@ -116,7 +117,7 @@ abstract class Payment extends ModelClass
 
     protected function saveInsert(array $values = []): bool
     {
-        if (empty($this->idasiento) && !$this->disableAccountingGeneration) {
+        if (AccountingSettings::isEnabled() && empty($this->idasiento) && !$this->disableAccountingGeneration) {
             $tool = new PaymentToAccounting();
             $tool->generate($this);
         }

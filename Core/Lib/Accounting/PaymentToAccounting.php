@@ -57,6 +57,10 @@ class PaymentToAccounting
      */
     public function generate($payment): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         // comprobaciones iniciales
         switch ($payment->modelClassName()) {
             case 'PagoCliente':

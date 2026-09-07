@@ -94,6 +94,10 @@ abstract class AccountingClosingBase
      */
     public function delete($exercise): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         return $this->deleteAccountEntry($exercise, $this->getOperation());
     }
 
@@ -113,6 +117,10 @@ abstract class AccountingClosingBase
      */
     public function exec($exercise, $idjournal)
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         $this->exercise = $exercise;
         $accountEntry = null;
         foreach ($this->getBalance() as $channel => $balance) {

@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core\Base\AjaxForms;
 
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Translator;
 use FacturaScripts\Dinamic\Model\Asiento;
 
@@ -55,6 +56,10 @@ class AccountingFooterHTML
 
     protected static function deleteBtn(Translator $i18n, Asiento $model): string
     {
+        if (false === AccountingSettings::isEnabled()) {
+            return '';
+        }
+
         if (false === $model->exists() || false === $model->editable) {
             return '';
         }
@@ -136,6 +141,10 @@ class AccountingFooterHTML
 
     protected static function newSubaccount(Translator $i18n, Asiento $model): string
     {
+        if (false === AccountingSettings::isEnabled()) {
+            return '';
+        }
+
         if (false === $model->editable) {
             return '<div class="col-sm"></div>';
         }
@@ -155,6 +164,10 @@ class AccountingFooterHTML
 
     protected static function saveBtn(Translator $i18n, Asiento $model): string
     {
+        if (false === AccountingSettings::isEnabled()) {
+            return '';
+        }
+
         if (false === $model->editable) {
             return '<div class="col-sm-3 col-md-2">'
                 . '<button type="button" class="btn btn-block btn-warning btn-spin-action mb-3" onclick="return accEntryFormSave(\'unlock-doc\', \'0\');">'
@@ -170,6 +183,10 @@ class AccountingFooterHTML
 
     protected static function moveBtn(Translator $i18n, Asiento $model): string
     {
+        if (false === AccountingSettings::isEnabled()) {
+            return '';
+        }
+
         if (false === $model->editable) {
             return '';
         }

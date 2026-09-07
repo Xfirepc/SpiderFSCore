@@ -59,6 +59,10 @@ class AccountingClosingOpening extends AccountingClosingBase
      */
     public function delete($exercise): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         $this->exercise = $exercise;
         $this->loadNewExercise();
         return parent::delete($this->newExercise);
@@ -76,6 +80,10 @@ class AccountingClosingOpening extends AccountingClosingBase
      */
     public function exec($exercise, $idjournal): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         if (!$this->delete($exercise)) {
             return false;
         }

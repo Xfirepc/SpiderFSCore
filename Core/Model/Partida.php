@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core\Model;
 
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Model\Base\AccEntryRelationTrait;
 use FacturaScripts\Core\Model\Base\ModelOnChangeClass;
@@ -194,6 +195,10 @@ class Partida extends ModelOnChangeClass
 
     public function delete(): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         $entry = $this->getAccountingEntry();
         if (false === $entry->editable) {
             return false;
@@ -261,6 +266,10 @@ class Partida extends ModelOnChangeClass
 
     public function save(): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         $entry = $this->getAccountingEntry();
         if (false === $entry->editable) {
             return false;

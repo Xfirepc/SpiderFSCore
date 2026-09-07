@@ -93,6 +93,10 @@ class ClosingToAcounting
      */
     public function delete($exercise, $data): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         $this->exercise = $exercise;
         $closing = $data['deleteClosing'] ?? true;
         $opening = $data['deleteOpening'] ?? true;
@@ -133,6 +137,10 @@ class ClosingToAcounting
      */
     public function exec($exercise, $data): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         $this->exercise = $exercise;
         $this->journalClosing = $data['journalClosing'] ?? 0;
         $this->journalOpening = $data['journalOpening'] ?? 0;

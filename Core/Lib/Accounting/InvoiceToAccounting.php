@@ -71,6 +71,10 @@ class InvoiceToAccounting extends AccountingClass
      */
     public function generate($model)
     {
+        if (false === AccountingSettings::isEnabled()) {
+            return;
+        }
+
         parent::generate($model);
         if (false === $this->initialChecks()) {
             return;

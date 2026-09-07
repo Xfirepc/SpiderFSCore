@@ -43,6 +43,10 @@ class AccountingClosingRegularization extends AccountingClosingBase
      */
     public function exec($exercise, $idjournal): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         if (!$this->loadSubAccount($exercise, AccountingAccounts::SPECIAL_PROFIT_LOSS_ACCOUNT)) {
             Tools::log()->error('subaccount-pyg-not-found');
             return false;

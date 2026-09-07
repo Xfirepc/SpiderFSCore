@@ -63,6 +63,10 @@ class AccountingPlanImport
      */
     public function importCSV(string $filePath, string $codejercicio): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         if (false === $this->exercise->loadFromCode($codejercicio)) {
             Tools::log()->error('exercise-not-found');
             return false;
@@ -96,6 +100,10 @@ class AccountingPlanImport
      */
     public function importXML(string $filePath, string $codejercicio): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return false;
+        }
+
         if (false === $this->exercise->loadFromCode($codejercicio)) {
             Tools::log()->error('exercise-not-found');
             return false;

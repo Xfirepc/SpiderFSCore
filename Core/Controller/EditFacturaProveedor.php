@@ -5,6 +5,7 @@
 
 namespace FacturaScripts\Core\Controller;
 
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Base\AjaxForms\PurchasesController;
 use FacturaScripts\Core\Base\Calculator;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
@@ -62,11 +63,13 @@ class EditFacturaProveedor extends PurchasesController
         $this->addListView($viewName, 'Asiento', 'accounting-entries', 'fas fa-balance-scale');
 
         // buttons
-        $this->addButton($viewName, [
-            'action' => 'generate-accounting',
-            'icon' => 'fa-solid fa-wand-magic-sparkles',
-            'label' => 'generate-accounting-entry'
-        ]);
+        if (AccountingSettings::isEnabled()) {
+            $this->addButton($viewName, [
+                'action' => 'generate-accounting',
+                'icon' => 'fa-solid fa-wand-magic-sparkles',
+                'label' => 'generate-accounting-entry'
+            ]);
+        }
 
         // settings
         $this->setSettings($viewName, 'btnNew', false);
@@ -141,6 +144,10 @@ class EditFacturaProveedor extends PurchasesController
 
     private function generateAccountingAction(): bool
     {
+        if (false === AccountingSettings::requireEnabled()) {
+            return true;
+        }
+
         $invoice = new FacturaProveedor();
         if (false === $invoice->loadFromCode($this->request->query->get('code'))) {
             Tools::log()->warning('record-not-found');

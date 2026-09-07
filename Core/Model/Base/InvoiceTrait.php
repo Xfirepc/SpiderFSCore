@@ -19,6 +19,7 @@
 
 namespace FacturaScripts\Core\Model\Base;
 
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Lib\Accounting\InvoiceToAccounting;
@@ -238,7 +239,7 @@ trait InvoiceTrait
         $guardClass = '\\FacturaScripts\\Plugins\\SpiderAccounting\\Lib\\Accounting\\AccountingGuard';
         $explicitPosting = class_exists($guardClass)
             && $guardClass::requiresExplicitInvoicePosting();
-        if (false === $explicitPosting) {
+        if (AccountingSettings::isEnabled() && false === $explicitPosting) {
             $tool = new InvoiceToAccounting();
             $tool->generate($this);
         }
