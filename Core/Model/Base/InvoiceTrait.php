@@ -90,12 +90,14 @@ trait InvoiceTrait
             }
         }
 
-        // remove accounting
-        $acEntry = $this->getAccountingEntry();
-        $acEntry->editable = true;
-        if ($acEntry->exists() && false === $acEntry->delete()) {
-            Tools::log()->warning('cant-remove-accounting-entry');
-            return false;
+        if (AccountingSettings::isEnabled()) {
+            // remove accounting
+            $acEntry = $this->getAccountingEntry();
+            $acEntry->editable = true;
+            if ($acEntry->exists() && false === $acEntry->delete()) {
+                Tools::log()->warning('cant-remove-accounting-entry');
+                return false;
+            }
         }
 
         return parent::delete();
@@ -223,25 +225,25 @@ trait InvoiceTrait
 
     protected function onChangeTotal(): bool
     {
-        // remove accounting entry
-        $asiento = $this->getAccountingEntry();
-        $asiento->editable = true;
-        if ($asiento->exists() && false === $asiento->delete()) {
-            Tools::log()->warning('cant-remove-account-entry');
-            return false;
-        }
+        // With accounting disabled, retain the prior entry and its link while
+        // allowing operational totals and receipts to change.
+        if (AccountingSettings::isEnabled()) {
+            $asiento = $this->getAccountingEntry();
+            $asiento->editable = true;
+            if ($asiento->exists() && false === $asiento->delete()) {
+                Tools::log()->warning('cant-remove-account-entry');
+                return false;
+            }
 
-        // In installations with an explicit posting policy, saving an
-        // unposted invoice must never create its journal entry implicitly.
-        // The standard "generate-accounting" action remains available and
-        // is the only path that posts it.
-        $this->idasiento = null;
-        $guardClass = '\\FacturaScripts\\Plugins\\SpiderAccounting\\Lib\\Accounting\\AccountingGuard';
-        $explicitPosting = class_exists($guardClass)
-            && $guardClass::requiresExplicitInvoicePosting();
-        if (AccountingSettings::isEnabled() && false === $explicitPosting) {
-            $tool = new InvoiceToAccounting();
-            $tool->generate($this);
+            // Unposted invoices follow the existing explicit posting policy.
+            $this->idasiento = null;
+            $guardClass = '\\FacturaScripts\\Plugins\\SpiderAccounting\\Lib\\Accounting\\AccountingGuard';
+            $explicitPosting = class_exists($guardClass)
+                && $guardClass::requiresExplicitInvoicePosting();
+            if (false === $explicitPosting) {
+                $tool = new InvoiceToAccounting();
+                $tool->generate($this);
+            }
         }
 
         // check receipts

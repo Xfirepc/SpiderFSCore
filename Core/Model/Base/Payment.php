@@ -81,12 +81,14 @@ abstract class Payment extends ModelClass
 
     public function delete(): bool
     {
-        // remove accounting
-        $acEntry = $this->getAccountingEntry();
-        $acEntry->editable = true;
-        if ($acEntry->exists() && false === $acEntry->delete()) {
-            Tools::log()->warning('cant-remove-accounting-entry');
-            return false;
+        if (AccountingSettings::isEnabled()) {
+            // remove accounting
+            $acEntry = $this->getAccountingEntry();
+            $acEntry->editable = true;
+            if ($acEntry->exists() && false === $acEntry->delete()) {
+                Tools::log()->warning('cant-remove-accounting-entry');
+                return false;
+            }
         }
 
         return parent::delete();
