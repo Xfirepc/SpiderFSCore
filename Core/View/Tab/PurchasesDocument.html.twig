@@ -307,10 +307,9 @@
         const selectedPaymentMethod = $('#payment-methods').children('select').val();
         const textClose = "{{ trans('close') }}";
         const textPaid = "{{ trans('paid') }}";
-        // reutilizamos los inputs del formulario del header
-        // para mantener formatos y valores dinamicos
-        const paymentMethodsHTML = $('#payment-methods').html();
-        const documentDateHTML = $('#document-date').html();
+        // Reutilizamos solo las opciones: los controles del pago son independientes
+        // de los bloqueos y widgets de la cabecera de la factura.
+        const paymentMethodOptions = $('#payment-methods').children('select').html();
 
         const html = `
             <div class="modal fade" id="modalPaymentConditions" tabindex="-1" aria-hidden="true">
@@ -318,10 +317,15 @@
                 <div class="modal-content">
                   <div class="modal-body">
                     <div class="mb-3" id="payment-methods-modal">
-                        ${paymentMethodsHTML}
+                        <label for="receiptPaymentMethod">{{ trans('payment-method') }}</label>
+                        <select id="receiptPaymentMethod" class="form-control" required>
+                            ${paymentMethodOptions}
+                        </select>
                     </div>
                     <div class="mb-3" id="document-date-modal">
-                        ${documentDateHTML}
+                        <label for="receiptPaymentDate">{{ trans('date') }}</label>
+                        <input id="receiptPaymentDate" type="date" class="form-control" required
+                               value="{{ "now"|date("Y-m-d") }}"/>
                     </div>
                   </div>
                   <div class="modal-footer">
@@ -335,16 +339,7 @@
         document.body.insertAdjacentHTML('beforeend', html);
 
         const modal = $('#modalPaymentConditions');
-        // El pago puede tener condiciones distintas, incluso si la factura está cerrada.
-        modal.find('#payment-methods-modal select')
-            .prop('disabled', false)
-            .prop('required', true)
-            .val(selectedPaymentMethod);
-        modal.find('#document-date-modal input')
-            .prop('disabled', false)
-            .prop('readOnly', false)
-            .prop('required', true)
-            .val('{{ "now"|date("Y-m-d") }}');
+        modal.find('#receiptPaymentMethod').val(selectedPaymentMethod);
         modal.one('hidden.bs.modal', function () {
             $(this).remove();
         });
