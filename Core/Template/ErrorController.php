@@ -22,6 +22,7 @@ namespace FacturaScripts\Core\Template;
 use Exception;
 use FacturaScripts\Core\Contract\ErrorControllerInterface;
 use FacturaScripts\Core\CrashReport;
+use FacturaScripts\Core\ErrorPage;
 use FacturaScripts\Core\Tools;
 
 abstract class ErrorController implements ErrorControllerInterface
@@ -65,54 +66,16 @@ abstract class ErrorController implements ErrorControllerInterface
             $this->exception->getFile(),
             $this->exception->getLine()
         );
+        $info['exception'] = get_class($this->exception);
 
         if ($this->save_crash) {
             CrashReport::save($info);
         }
 
-        $body = '<div class="container">'
-            . '<div class="row justify-content-center">'
-            . '<div class="col-sm-6">'
-            . '<div class="card shadow mt-5 mb-5">'
-            . '<div class="card-body">'
-            . '<img src="' . $info['report_qr'] . '" class="float-end" alt="QR" />' . $cardBody
-            . '</div>'
-            . $table
-            . '<div class="card-footer p-2">'
-            . '<div class="row">'
-            . '<div class="col">'
-            . '<form method="post" action="' . $info['report_url'] . '" target="_blank">'
-            . '<input type="hidden" name="error_code" value="' . $info['code'] . '">'
-            . '<input type="hidden" name="error_message" value="' . $info['message'] . '">'
-            . '<input type="hidden" name="error_file" value="' . $info['file'] . '">'
-            . '<input type="hidden" name="error_line" value="' . $info['line'] . '">'
-            . '<input type="hidden" name="error_hash" value="' . $info['hash'] . '">'
-            . '<input type="hidden" name="error_url" value="' . $info['url'] . '">'
-            . '<input type="hidden" name="error_core_version" value="' . $info['core_version'] . '">'
-            . '<input type="hidden" name="error_plugin_list" value="' . $info['plugin_list'] . '">'
-            . '<input type="hidden" name="error_php_version" value="' . $info['php_version'] . '">'
-            . '<input type="hidden" name="error_os" value="' . $info['os'] . '">'
-            . '<button type="submit" class="btn btn-secondary">' . Tools::lang()->trans('to-report') . '</button>'
-            . '</form>'
-            . '</div>';
-
-        if (false === Tools::config('disable_deploy_actions', false)) {
-            $body .= '<div class="col-auto">'
-                // . '<a href="' . Tools::config('route') . '/deploy?action=disable-plugins&token=' . CrashReport::newToken()
-                // . '" class="btn btn-light">' . Tools::lang()->trans('disable-plugins') . '</a> '
-                // . '<a href="' . Tools::config('route') . '/deploy?action=rebuild&token=' . CrashReport::newToken()
-                // . '" class="btn btn-light">' . Tools::lang()->trans('rebuild') . '</a> '
-                . '</div>';
-        }
-
-        $body .= '</div>'
-            . '</div>'
-            . '</div>'
-            . '</div>'
-            . '</div>'
-            . '</div>';
-
-        return $this->html($title, $body, $bodyCss);
+        // Conservamos la firma para los controladores existentes, pero la vista
+        // decide en el servidor qué información corresponde a cada usuario.
+        $classParts = explode('\\', static::class);
+        return ErrorPage::response($info, end($classParts));
     }
 
     protected function setSaveCrash(bool $save): void

@@ -20,7 +20,6 @@
 namespace FacturaScripts\Core\Error;
 
 use FacturaScripts\Core\Template\ErrorController;
-use FacturaScripts\Core\Tools;
 
 class AlreadyInstalled extends ErrorController
 {
@@ -28,7 +27,6 @@ class AlreadyInstalled extends ErrorController
     {
         http_response_code(403);
 
-        echo '<h1>' . Tools::lang()->trans('already-installed') . '</h1>';
-        echo '<p>' . $this->exception->getMessage() . '</p>';
+        echo $this->htmlCard('', '', '');
     }
 }

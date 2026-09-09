@@ -22,6 +22,7 @@ namespace FacturaScripts\Core\Base\AjaxForms;
 use FacturaScripts\Core\Base\Calculator;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\DataSrc\Series;
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Lib\ExtendedController\BaseView;
 use FacturaScripts\Core\Lib\ExtendedController\DocFilesTrait;
 use FacturaScripts\Core\Lib\ExtendedController\LogAuditTrait;
@@ -439,8 +440,10 @@ abstract class SalesController extends PanelController
             return false;
         }
 
-        // guardamos el documento
-        if ($this->getModel()->editable && false === $this->saveDocAction()) {
+        // El estado de cobro no requiere reescribir una factura contabilizada.
+        $model = $this->getModel();
+        if ($model->editable && (!AccountingSettings::isEnabled() || empty($model->idasiento))
+            && false === $this->saveDocAction()) {
             return false;
         }
 

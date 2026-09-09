@@ -190,6 +190,7 @@ final class Kernel
             self::runController($relativeUrl);
         } catch (Exception $exception) {
             error_clear_last();
+            CrashReport::clearOutput();
 
             $handler = self::getErrorHandler($exception);
             $handler->run();

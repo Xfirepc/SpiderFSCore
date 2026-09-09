@@ -19,11 +19,14 @@
 
 namespace FacturaScripts\Core\Model;
 
+use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\DataSrc\FormasPago;
 use FacturaScripts\Core\Model\Base\ModelClass;
 use FacturaScripts\Core\Model\Base\ModelTrait;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Model\CuentaBanco as DinCuentaBanco;
+use FacturaScripts\Dinamic\Model\Ejercicio as DinEjercicio;
+use FacturaScripts\Dinamic\Model\Subcuenta as DinSubcuenta;
 
 /**
  * Payment method of an invoice, delivery note, order or estimation.
@@ -42,6 +45,9 @@ class FormaPago extends ModelClass
 
     /** @var string */
     public $codpago;
+
+    /** @var string|null Código resuelto en el ejercicio de cada cobro, pago o anticipo. */
+    public $codsubcuenta;
 
     /** @var string */
     public $descripcion;
@@ -104,7 +110,31 @@ class FormaPago extends ModelClass
 
     public function getSubcuenta(string $codejercicio, bool $create): Subcuenta
     {
-        return $this->getBankAccount()->getSubcuenta($codejercicio, $create);
+        // El banco seleccionado tiene prioridad. Sin configuración se conserva CAJA.
+        if (!empty($this->codcuentabanco) || empty($this->codsubcuenta)) {
+            return $this->getBankAccount()->getSubcuenta($codejercicio, $create);
+        }
+
+        $subcuenta = new DinSubcuenta();
+        $ejercicio = new DinEjercicio();
+        if (false === $ejercicio->loadFromCode($codejercicio)
+            || (int)$ejercicio->idempresa !== (int)$this->idempresa) {
+            Tools::log()->warning('payment-subaccount-company-mismatch');
+            return $subcuenta;
+        }
+
+        $where = [
+            new DataBaseWhere('codsubcuenta', $this->codsubcuenta),
+            new DataBaseWhere('codejercicio', $codejercicio),
+        ];
+        if (false === $subcuenta->loadFromCode('', $where)) {
+            // Una selección explícita nunca se sustituye por CAJA ni se crea bajo otra cuenta.
+            Tools::log()->warning('payment-subaccount-not-found', [
+                '%account%' => $this->codsubcuenta,
+                '%exercise%' => $codejercicio,
+            ]);
+        }
+        return $subcuenta;
     }
 
     public function getSubcuentaGastos(string $codejercicio, bool $create): Subcuenta
@@ -167,6 +197,7 @@ class FormaPago extends ModelClass
     {
         $this->codpago = Tools::noHtml($this->codpago);
         $this->descripcion = Tools::noHtml($this->descripcion);
+        $this->codsubcuenta = trim(Tools::noHtml($this->codsubcuenta)) ?: null;
 
         if ($this->codpago && 1 !== preg_match('/^[A-Z0-9_\+\.\-\s]{1,10}$/i', $this->codpago)) {
             Tools::log()->error(

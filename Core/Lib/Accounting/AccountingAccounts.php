@@ -208,7 +208,11 @@ class AccountingAccounts
     {
         $bankAccount = new CuentaBanco();
         $paymentMethod = new FormaPago();
-        if ($paymentMethod->loadFromCode($codpago) &&
+        $loaded = $paymentMethod->loadFromCode($codpago);
+        if ($loaded && empty($paymentMethod->codcuentabanco) && !empty($paymentMethod->codsubcuenta)) {
+            return $paymentMethod->getSubcuenta($this->exercise->codejercicio, false);
+        }
+        if ($loaded &&
             $paymentMethod->codcuentabanco &&
             $bankAccount->loadFromCode($paymentMethod->codcuentabanco) &&
             !empty($bankAccount->codsubcuenta)) {

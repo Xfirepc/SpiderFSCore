@@ -303,6 +303,11 @@ class Controller implements ControllerInterface
             $this->publicCore($response);
         }
 
+        // Los permisos sobre registros también usan la pantalla común y el estado 403.
+        if ($this->template === 'Error/AccessDenied.html.twig') {
+            throw new KernelException('AccessDenied', 'Acceso denegado a la página solicitada.');
+        }
+
         // carga el menú
         $menu = new MenuManager();
         $menu->setUser(Session::user());

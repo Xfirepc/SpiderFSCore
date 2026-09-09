@@ -62,5 +62,12 @@
                 <widget type="checkbox" fieldname="imprimir"/>
             </column>
         </group>
+        <group name="accounting" title="accounting" numcolumns="12" order="200">
+            <column name="payment-subaccount" description="payment-subaccount-help" numcolumns="6" order="100">
+                <widget type="autocomplete" fieldname="codsubcuenta" maxlength="15">
+                    <values source="subcuentas" fieldcode="codsubcuenta" fieldtitle="descripcion"/>
+                </widget>
+            </column>
+        </group>
     </columns>
 </view>

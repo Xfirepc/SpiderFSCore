@@ -1,4 +1,8 @@
 {
+    "payment-subaccount": "Subcuenta contable",
+    "payment-subaccount-help": "Opcional para efectivo u otros medios sin banco. Se usa si no hay cuenta bancaria en la operación ni en esta forma de pago. Debe existir con este código en el ejercicio de la operación. Si ambos campos están vacíos, se usa CAJA.",
+    "payment-subaccount-company-mismatch": "La forma de pago y el ejercicio de la subcuenta deben pertenecer a la misma empresa.",
+    "payment-subaccount-not-found": "La subcuenta %account% de la forma de pago no existe en el ejercicio %exercise%. Créela en el plan o corrija la forma de pago antes de contabilizar.",
     "accounting-disabled": "La contabilidad está desactivada. Active «Permite contabilidad» para realizar esta operación.",
     "abbreviated": "Abreviado",
     "about": "Acerca de",

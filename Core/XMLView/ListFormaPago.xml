@@ -54,6 +54,9 @@
                 <values source="cuentasbanco" fieldcode="codcuenta" fieldtitle="descripcion"/>
             </widget>
         </column>
+        <column name="payment-subaccount" order="170">
+            <widget type="text" fieldname="codsubcuenta"/>
+        </column>
     </columns>
     <rows>
         <row type="status">
