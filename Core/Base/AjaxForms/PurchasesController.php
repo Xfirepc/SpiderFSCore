@@ -21,6 +21,7 @@ namespace FacturaScripts\Core\Base\AjaxForms;
 
 use FacturaScripts\Core\Base\Calculator;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Core\DataSrc\FormasPago;
 use FacturaScripts\Core\DataSrc\Series;
 use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Lib\ExtendedController\BaseView;
@@ -425,8 +426,28 @@ abstract class PurchasesController extends PanelController
             return false;
         }
 
-        // El estado de cobro no requiere reescribir una factura contabilizada.
+        $formData = json_decode($this->request->request->get('data'), true);
+        $formData = is_array($formData) ? $formData : [];
+        $paid = (bool)$this->request->request->get('selectedLine');
         $model = $this->getModel();
+        if ($paid && array_key_exists('codpagorecibo', $formData)) {
+            $paymentMethod = null;
+            foreach (FormasPago::all() as $method) {
+                if ($method->codpago === $formData['codpagorecibo']
+                    && $method->idempresa == $model->idempresa
+                    && ($method->activa || $method->codpago === $model->codpago)) {
+                    $paymentMethod = $method;
+                    break;
+                }
+            }
+            if (null === $paymentMethod) {
+                Tools::log()->warning('choose-payment-method');
+                $this->sendJsonWithLogs(['ok' => false]);
+                return false;
+            }
+        }
+
+        // El estado de cobro no requiere reescribir una factura contabilizada.
         if ($model->editable && (!AccountingSettings::isEnabled() || empty($model->idasiento))
             && false === $this->saveDocAction()) {
             return false;
@@ -435,7 +456,7 @@ abstract class PurchasesController extends PanelController
         // si la factura es de 0 €, la marcamos como pagada
         $model = $this->getModel();
         if (empty($model->total) && property_exists($model, 'pagada')) {
-            $model->pagada = (bool)$this->request->request->get('selectedLine');
+            $model->pagada = $paid;
             $model->save();
             $this->sendJsonWithLogs(['ok' => true, 'newurl' => $model->url() . '&action=save-ok']);
             return false;
@@ -450,15 +471,20 @@ abstract class PurchasesController extends PanelController
         }
 
         // marcamos los recibos como pagados, eso marcará la factura como pagada
-        $formData = json_decode($this->request->request->get('data'), true);
+        $paymentCode = $formData['codpagorecibo'] ?? $model->codpago;
         foreach ($receipts as $receipt) {
             $receipt->nick = $this->user->nick;
-            // si no está pagado, actualizamos fechapago y codpago
-            if (false == $receipt->pagado) {
+            // La selección del modal pertenece al nuevo pago del recibo.
+            if ($paid && false == $receipt->pagado) {
                 $receipt->fechapago = $formData['fechapagorecibo'] ?? Tools::date();
-                $receipt->codpago = $model->codpago;
+                if ($receipt->codpago !== $paymentCode) {
+                    $receipt->codpago = $paymentCode;
+                    if (property_exists($receipt, 'codcuentabanco')) {
+                        $receipt->codcuentabanco = $receipt->getPaymentMethod()->codcuentabanco;
+                    }
+                }
             }
-            $receipt->pagado = (bool)$this->request->request->get('selectedLine');
+            $receipt->pagado = $paid;
             if (false === $receipt->save()) {
                 $this->sendJsonWithLogs(['ok' => false]);
                 return false;
