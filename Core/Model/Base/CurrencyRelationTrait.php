@@ -20,6 +20,7 @@
 namespace FacturaScripts\Core\Model\Base;
 
 use FacturaScripts\Core\DataSrc\Divisas;
+use FacturaScripts\Core\Lib\Accounting\AccountingCurrency;
 
 /**
  * Description of CurrencyRelationTrait
@@ -36,7 +37,7 @@ trait CurrencyRelationTrait
     public $coddivisa;
 
     /**
-     * Rate of conversion to Euros of the selected currency.
+     * Tasa del documento. Las operaciones USD con moneda funcional USD usan 1.
      *
      * @var float|int
      */
@@ -52,6 +53,7 @@ trait CurrencyRelationTrait
             if ($divisa->coddivisa === $coddivisa) {
                 $this->coddivisa = $divisa->coddivisa;
                 $this->tasaconv = $purchase && $divisa->tasaconvcompra !== null ? $divisa->tasaconvcompra : $divisa->tasaconv;
+                $this->tasaconv = AccountingCurrency::rate($this->coddivisa, $this->tasaconv);
                 return;
             }
         }

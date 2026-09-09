@@ -26,6 +26,7 @@ use FacturaScripts\Core\DataSrc\Empresas;
 use FacturaScripts\Core\DataSrc\FormasPago;
 use FacturaScripts\Core\DataSrc\Series;
 use FacturaScripts\Core\Lib\InvoiceOperation;
+use FacturaScripts\Core\Lib\Accounting\AccountingCurrency;
 use FacturaScripts\Core\Model\Base\BusinessDocument;
 use FacturaScripts\Core\Model\Base\TransformerDocument;
 use FacturaScripts\Core\Session;
@@ -637,6 +638,10 @@ trait CommonSalesPurchases
 
     protected static function tasaconv(Translator $i18n, BusinessDocument $model): string
     {
+        if ('USD' === $model->coddivisa && AccountingCurrency::isUsd()) {
+            return '';
+        }
+
         $attributes = $model->editable ? 'name="tasaconv" step="any" autocomplete="off"' : 'disabled';
         return '<div class="col-sm-6">'
             . '<div class="form-group">' . $i18n->trans('conversion-rate')

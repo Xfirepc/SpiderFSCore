@@ -209,11 +209,8 @@ abstract class AccountingClass extends AccountingAccounts
      */
     protected function functionalAmount($amount): float
     {
-        $rate = property_exists($this->document, 'tasaconv') ? (float)$this->document->tasaconv : 1.0;
-        if ($rate <= 0) {
-            $rate = 1.0;
-        }
-        return round((float)$amount / $rate, FS_NF0);
+        return AccountingCurrency::amount($amount, $this->document->coddivisa ?? null,
+            $this->document->tasaconv ?? 1.0);
     }
 
     protected function setDocumentCurrency($line): void
@@ -222,7 +219,8 @@ abstract class AccountingClass extends AccountingAccounts
             $line->coddivisa = $this->document->coddivisa;
         }
         if (property_exists($this->document, 'tasaconv') && (float)$this->document->tasaconv > 0) {
-            $line->tasaconv = (float)$this->document->tasaconv;
+            $line->tasaconv = AccountingCurrency::rate($this->document->coddivisa ?? null,
+                $this->document->tasaconv);
         }
     }
 

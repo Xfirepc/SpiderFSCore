@@ -283,21 +283,15 @@ class PaymentToAccounting
 
     protected function functionalAmount($amount): float
     {
-        $rate = property_exists($this->payment, 'tasaconv') ? (float)$this->payment->tasaconv : 1.0;
-        if ($rate <= 0) {
-            $rate = 1.0;
-        }
-        return round((float)$amount / $rate, FS_NF0);
+        return AccountingCurrency::amount($amount, $this->payment->coddivisa ?? $this->receipt->coddivisa ?? null,
+            $this->payment->tasaconv ?? 1.0);
     }
 
     protected function invoiceFunctionalAmount($amount): float
     {
         $invoice = $this->receipt->getInvoice();
-        $rate = property_exists($invoice, 'tasaconv') ? (float)$invoice->tasaconv : 1.0;
-        if ($rate <= 0) {
-            $rate = 1.0;
-        }
-        return round((float)$amount / $rate, FS_NF0);
+        return AccountingCurrency::amount($amount, $invoice->coddivisa ?? $this->receipt->coddivisa ?? null,
+            $invoice->tasaconv ?? 1.0);
     }
 
     protected function paymentExchangeDifferenceLine(Asiento &$entry): bool
@@ -371,7 +365,8 @@ class PaymentToAccounting
             $line->coddivisa = $this->payment->coddivisa;
         }
         if (property_exists($this->payment, 'tasaconv') && (float)$this->payment->tasaconv > 0) {
-            $line->tasaconv = (float)$this->payment->tasaconv;
+            $line->tasaconv = AccountingCurrency::rate($this->payment->coddivisa ?? $this->receipt->coddivisa ?? null,
+                $this->payment->tasaconv);
         }
     }
 
@@ -382,7 +377,8 @@ class PaymentToAccounting
             $line->coddivisa = $invoice->coddivisa;
         }
         if (property_exists($invoice, 'tasaconv') && (float)$invoice->tasaconv > 0) {
-            $line->tasaconv = (float)$invoice->tasaconv;
+            $line->tasaconv = AccountingCurrency::rate($invoice->coddivisa ?? $this->receipt->coddivisa ?? null,
+                $invoice->tasaconv);
         }
     }
 }

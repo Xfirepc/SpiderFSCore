@@ -578,7 +578,7 @@ class InvoiceToAccounting extends AccountingClass
             return true;
         }
 
-        $rate = property_exists($this->document, 'tasaconv') ? (float)$this->document->tasaconv : 1.0;
+        $rate = AccountingCurrency::rate($this->document->coddivisa ?? null, $this->document->tasaconv ?? 1.0);
         $maximumRounding = max(0.02, count($lines) * 0.01);
         if ($rate <= 0 || abs($rate - 1.0) < 0.000001 || abs($difference) > $maximumRounding) {
             return false;
