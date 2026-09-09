@@ -197,7 +197,12 @@ final class DbUpdater
         $dbCons = self::db()->getConstraints($tableName);
         $sql = self::compareColumns($tableName, $structure['columns'], $dbCols) .
             self::compareConstraints($tableName, $structure['constraints'], $dbCons);
-        if (!empty($sql) && self::db()->exec($sql)) {
+        if (!empty($sql)) {
+            if (false === self::db()->exec($sql)) {
+                // Mantener pendiente una actualización fallida para reintentar
+                // al cargar el modelo; la tabla aún puede estar incompleta.
+                return false;
+            }
             self::save($tableName);
 
             Tools::log()->debug('table-checked', ['%tableName%' => $tableName]);
