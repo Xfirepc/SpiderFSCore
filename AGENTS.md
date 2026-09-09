@@ -2,6 +2,22 @@
 
 Estas instrucciones se aplican a Core y a todos los plugins bajo `Plugins/`.
 
+## Regla permanente: USD para Ecuador
+
+La prioridad funcional confirmada por el usuario es operar en **USD** en Ecuador.
+Actualmente no se requiere operar en EUR ni usar EUR como moneda funcional.
+
+- En los flujos de Ecuador, USD es la moneda de referencia para documentos,
+  recibos, pagos, asientos e informes. Para una operación USD contabilizada en
+  USD, la tasa efectiva es **1** y el importe contable coincide con el importe
+  original: un pago de **51,75 USD** se contabiliza por **51,75 USD**.
+- No interpretar las tasas históricas del catálogo de divisas respecto de EUR
+  como tasas respecto de USD. El valor heredado `USD.tasaconv = 1.129` no debe
+  convertir un pago de 51,75 USD en un asiento de 45,84 USD.
+- Al corregir moneda o conversión, revisar de forma coherente compras, ventas,
+  recibos, pagos y sus informes; no limitar la corrección al importe visible.
+  Conservar la regla `allow_accounting` y la trazabilidad de asientos históricos.
+
 ## Regla permanente: `allow_accounting`
 
 Todas las funciones y restricciones contables deben depender de la configuración
