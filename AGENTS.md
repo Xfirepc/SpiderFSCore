@@ -2,6 +2,62 @@
 
 Estas instrucciones se aplican a Core y a todos los plugins bajo `Plugins/`.
 
+## Regla permanente: código limpio y mantenible
+
+- Escribir código legible, con nombres que expresen su propósito y métodos con una
+  responsabilidad clara. Usar bloques e indentación consistentes; no comprimir
+  validaciones, bucles o manejo de errores en una sola línea.
+- Declarar el `namespace` y los imports `use` en la cabecera. Referenciar las clases
+  por su nombre importado; resolver colisiones con alias descriptivos y eliminar
+  imports sin uso. Para clases conocidas, preferir `Clase::class` a cadenas con
+  namespaces. Conservar la resolución dinámica cuando el modelo dependa del
+  documento o de plugins opcionales.
+- Reutilizar la lógica de negocio compartida. Evitar copiar validaciones, cálculos
+  de stock y bloques de persistencia entre controladores o plugins. Extraer métodos
+  o servicios cuando expresen una operación común real; no crear abstracciones que
+  sólo añadan indirección.
+- Preferir el ORM de FacturaScripts: modelos, `loadFromCode()`, `all()`, `count()` y
+  `DataBaseWhere`; para lecturas con bloqueo dentro de una transacción, usar
+  `allForUpdate()`. Usar los modelos de `Dinamic` cuando corresponda respetar las
+  extensiones instaladas. No sustituir operaciones del modelo por escrituras SQL
+  que omitan sus validaciones, hooks o efectos de stock.
+- Reservar SQL directo para operaciones que el ORM no pueda expresar con las mismas
+  garantías, como bloqueos de filas, reclamaciones atómicas de idempotencia y ciertas
+  consultas agregadas. Explicar la razón junto a la consulta; escapar valores con la
+  API de base de datos y usar tablas/columnas de origen controlado. No eliminar un
+  bloqueo para simplificar la sintaxis.
+- Evitar consultas repetidas dentro de bucles y cargas completas innecesarias.
+  Conservar precisión, orden de bloqueos, atomicidad y propagación de errores al
+  optimizar. Respetar la versión de PHP soportada y los contratos de los modelos.
+- Al mejorar código existente, concentrar el cambio en el flujo afectado y comprobar
+  su comportamiento. Las pruebas deben cubrir resultados e invariantes, no depender
+  del texto exacto ni de los imports del código fuente.
+
+## Regla permanente: inventario y stock
+
+- Las operaciones futuras deben confirmar o revertir juntos documento, líneas,
+  saldos y movimientos. Reutilizar `Inventory` y el modelo `Stock`; comprobar el
+  resultado de cada guardado, borrado y confirmación de transacción.
+- Distinguir un movimiento relativo de un conteo absoluto. Conservar almacén,
+  referencia, cantidades reservadas y pendientes de recibir, composición original
+  y vínculos de devolución. Los reintentos no deben duplicar ventas ni salidas.
+- Registrar los movimientos desde los cambios efectivos de saldo y conservar el
+  historial nuevo inmutable. No reconstruir existencias desde un historial parcial.
+- No reparar ni reinterpretar datos históricos de tenants como parte de estos
+  cambios. La corrección histórica queda para la revisión manual solicitada.
+- Al reutilizar saldos o cálculos, limitar su vida a la transacción real de base
+  de datos, incluyendo transacciones exteriores. Invalidarlos al confirmar,
+  revertir, reintentar o cambiar la identidad de productos y variantes. Mantener
+  los totales derivados visibles después de cada guardado y registrar cada efecto
+  individual; no reemplazar bloqueos ni lecturas vigentes por cachés persistentes.
+- Medir las optimizaciones contra una copia del workspace que incluya los plugins
+  ignorados por Git. Comparar consultas, latencia, concurrencia y memoria con la
+  misma carga y datos desechables; no confundir regresiones funcionales con pruebas
+  de rendimiento ni afirmar mejoras de producción sin mediciones representativas.
+- Ejecutar las regresiones de inventario en una base desechable. No cargar
+  `config.php`, `Test/bootstrap.php` ni conectar a las bases de las instancias para
+  estas pruebas. Documentar qué se comprobó y qué requiere validación funcional.
+
 ## Regla permanente: USD para Ecuador
 
 La prioridad funcional confirmada por el usuario es operar en **USD** en Ecuador.

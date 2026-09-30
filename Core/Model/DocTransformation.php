@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2013-2022 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -20,6 +21,7 @@
 namespace FacturaScripts\Core\Model;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
 use FacturaScripts\Core\Model\Base\BusinessDocumentLine;
 
 /**
@@ -31,7 +33,6 @@ use FacturaScripts\Core\Model\Base\BusinessDocumentLine;
  */
 class DocTransformation extends Base\ModelClass
 {
-
     use Base\ModelTrait;
 
     /**
@@ -112,10 +113,10 @@ class DocTransformation extends Base\ModelClass
                 if ($updateServido && $line->cantidad) {
                     $parentLine = $line->getParentLine();
                     $parentLine->servido -= $line->cantidad;
-                    $parentLine->save();
+                    Inventory::requireSuccess($parentLine->save());
                 }
 
-                $line->delete();
+                Inventory::requireSuccess($line->delete());
             }
         }
     }

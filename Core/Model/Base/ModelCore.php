@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2013-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -25,6 +26,7 @@ use FacturaScripts\Core\Base\ToolBox;
 use FacturaScripts\Core\DbQuery;
 use FacturaScripts\Core\DbUpdater;
 use FacturaScripts\Core\Lib\Import\CSVImport;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
 
 /**
  * The class from which all models inherit, connects to the database,
@@ -165,6 +167,7 @@ abstract class ModelCore
             . " WHERE " . $this->primaryColumn() . " = " . self::$dataBase->var2str($this->primaryColumnValue()) . ";";
         if (self::$dataBase->exec($sql)) {
             $this->{$this->primaryColumn()} = $newValue;
+            Inventory::modelIdentityChanged();
             return true;
         }
 

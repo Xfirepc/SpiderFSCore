@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2017-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -73,6 +74,32 @@ final class PluginDeploy
         // reload translations
         CoreTranslator::deploy();
         CoreTranslator::reload();
+    }
+
+    /** Recover a missing table definition without initializing plugins or touching the database. */
+    public function deployTable(string $tableName, array $enabledPlugins): bool
+    {
+        if (!preg_match('/^[a-zA-Z0-9_]+$/D', $tableName)) {
+            return false;
+        }
+        $this->enabledPlugins = array_reverse($enabledPlugins);
+        $fileName = $tableName . '.xml';
+        $origins = [];
+        foreach ($this->enabledPlugins as $pluginName) {
+            $origins[] = FS_FOLDER . '/Plugins/' . $pluginName . '/Table/' . $fileName;
+        }
+        $origins[] = FS_FOLDER . '/Core/Table/' . $fileName;
+        foreach ($origins as $origin) {
+            if (!is_file($origin)) {
+                continue;
+            }
+            if (!$this->createFolder(FS_FOLDER . '/Dinamic/Table')) {
+                return false;
+            }
+            $this->linkXMLFile($fileName, 'Table', $origin);
+            return is_file(FS_FOLDER . '/Dinamic/Table/' . $fileName);
+        }
+        return false;
     }
 
     /**
@@ -295,7 +322,15 @@ final class PluginDeploy
         }
 
         $destinationPath = FS_FOLDER . DIRECTORY_SEPARATOR . 'Dinamic' . DIRECTORY_SEPARATOR . $folder . DIRECTORY_SEPARATOR . $fileName;
-        $xml->asXML($destinationPath);
+        // Concurrent requests must never read a partially written schema or view.
+        $temporaryPath = tempnam(dirname($destinationPath), '.xml-');
+        if ($temporaryPath === false) {
+            return;
+        }
+        if (!$xml->asXML($temporaryPath) || !chmod($temporaryPath, 0644) || !rename($temporaryPath, $destinationPath)) {
+            unlink($temporaryPath);
+            return;
+        }
 
         $this->fileList[$folder][$fileName] = $fileName;
     }

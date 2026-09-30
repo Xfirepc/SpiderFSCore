@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2013-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -20,6 +21,7 @@
 namespace FacturaScripts\Core\Model\Base;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Lib\BusinessDocumentGenerator;
 use FacturaScripts\Dinamic\Model\DocTransformation;
@@ -119,6 +121,18 @@ abstract class TransformerDocument extends BusinessDocument
      */
     public function delete(): bool
     {
+        return Inventory::model(
+            self::$dataBase,
+            $this,
+            function (): bool {
+                return $this->deleteDocument();
+            },
+            'delete'
+        );
+    }
+
+    private function deleteDocument(): bool
+    {
         if (false === $this->exists()) {
             return true;
         }
@@ -133,12 +147,18 @@ abstract class TransformerDocument extends BusinessDocument
 
         // remove lines to update stock
         foreach ($this->getLines() as $line) {
+            if (!empty($line->stockparent)) {
+                continue;
+            }
+
             if ($line->delete()) {
                 continue;
             }
+
             if ($newTransaction) {
                 self::$dataBase->rollback();
             }
+
             return false;
         }
 
@@ -147,6 +167,7 @@ abstract class TransformerDocument extends BusinessDocument
             if ($newTransaction) {
                 self::$dataBase->rollback();
             }
+
             return false;
         }
 
@@ -160,7 +181,10 @@ abstract class TransformerDocument extends BusinessDocument
             foreach ($parent->getAvailableStatus() as $status) {
                 if ($status->predeterminado) {
                     $parent->idestado = $status->idestado;
-                    $parent->save();
+                    if (!$parent->save()) {
+                        return false;
+                    }
+
                     break;
                 }
             }
@@ -177,8 +201,11 @@ abstract class TransformerDocument extends BusinessDocument
         ]);
 
         if ($newTransaction) {
-            self::$dataBase->commit();
+            if (!self::$dataBase->commit()) {
+                return false;
+            }
         }
+
         return true;
     }
 
@@ -298,8 +325,11 @@ abstract class TransformerDocument extends BusinessDocument
             // update lines to update stock
             foreach ($this->getLines() as $line) {
                 $line->actualizastock = $status->actualizastock;
-                $line->save();
+                if (!$line->save()) {
+                    return false;
+                }
             }
+
             // do not generate a new document
             return parent::onChange($field);
         }
@@ -315,7 +345,9 @@ abstract class TransformerDocument extends BusinessDocument
 
             $line->actualizastock = $status->actualizastock;
             $line->servido = $line->cantidad;
-            $line->save();
+            if (!$line->save()) {
+                return false;
+            }
         }
 
         // generate the new document, when there are no children

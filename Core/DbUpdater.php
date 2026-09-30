@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2023-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -21,6 +22,7 @@ namespace FacturaScripts\Core;
 
 use FacturaScripts\Core\Base\DataBase;
 use FacturaScripts\Core\Base\DataBase\DataBaseQueries;
+use FacturaScripts\Core\Base\PluginDeploy;
 
 /**
  * Actualiza la estructura de la base de datos.
@@ -42,16 +44,21 @@ final class DbUpdater
 
     public static function createTable(string $tableName, array $structure = [], string $sqlAfter = ''): bool
     {
-        if (self::db()->tableExists($tableName)) {
-            return false;
-        }
-
         if (empty($structure)) {
             $filePath = self::getTableXmlLocation($tableName);
             $structure = self::readTableXml($filePath);
         }
 
-        $sql = self::sqlTool()->sqlCreateTable($tableName, $structure['columns'], $structure['constraints']) . $sqlAfter;
+        if (empty($structure['columns'])) {
+            Tools::log()->critical('No se puede crear la tabla ' . $tableName . ': falta una definición XML válida. Reconstruya Dinamic.');
+            return false;
+        }
+
+        if (self::db()->tableExists($tableName)) {
+            return false;
+        }
+
+        $sql = self::sqlTool()->sqlCreateTable($tableName, $structure['columns'], $structure['constraints'] ?? []) . $sqlAfter;
         if (self::db()->exec($sql)) {
             self::save($tableName);
 
@@ -86,6 +93,12 @@ final class DbUpdater
     public static function getTableXmlLocation(string $tableName): string
     {
         $fileName = Tools::folder('Dinamic', 'Table', $tableName . '.xml');
+        if (!is_file($fileName)) {
+            // New tables may be loaded during plugin init before the usual rebuild.
+            // Use the same plugin priority and XML extensions as a full deployment.
+            $deploy = new PluginDeploy();
+            $deploy->deployTable($tableName, Plugins::enabled());
+        }
         if (Tools::config('debug') && false === file_exists($fileName)) {
             return Tools::folder('Core', 'Table', $tableName . '.xml');
         }
@@ -190,6 +203,11 @@ final class DbUpdater
         if (empty($structure)) {
             $filePath = self::getTableXmlLocation($tableName);
             $structure = self::readTableXml($filePath);
+        }
+
+        if (empty($structure['columns'])) {
+            Tools::log()->critical('No se puede comprobar la tabla ' . $tableName . ': falta una definición XML válida. Reconstruya Dinamic.');
+            return false;
         }
 
         // compare table columns and constraints against xml definition

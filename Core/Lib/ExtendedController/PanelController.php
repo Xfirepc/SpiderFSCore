@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2017-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -20,6 +21,7 @@
 namespace FacturaScripts\Core\Lib\ExtendedController;
 
 use FacturaScripts\Core\Base\ControllerPermissions;
+use FacturaScripts\Core\Model\Stock;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Model\User;
 use Symfony\Component\HttpFoundation\Response;
@@ -252,7 +254,9 @@ abstract class PanelController extends BaseController
         }
 
         // save in database
-        if ($this->views[$this->active]->model->save()) {
+        $model = $this->views[$this->active]->model;
+        $saved = $model instanceof Stock ? $model->saveAbsolute() : $model->save();
+        if ($saved) {
             Tools::log()->notice('record-updated-correctly');
             return true;
         }
@@ -491,6 +495,7 @@ abstract class PanelController extends BaseController
                 'match' => $variante->{$column->widget->match},
             ];
         }
+
         return $results;
     }
 }

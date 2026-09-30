@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2012-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -323,6 +324,7 @@ class Producto extends ModelClass
         if ($this->descripcion === null) {
             $this->descripcion = '';
         }
+
         if ($this->observaciones === null) {
             $this->observaciones = '';
         }
@@ -332,6 +334,7 @@ class Producto extends ModelClass
             $variant = new DinVariante();
             $this->referencia = (string)$variant->newCode('referencia');
         }
+
         if (strlen($this->referencia) > 30) {
             Tools::log()->warning(
                 'invalid-column-lenght',
@@ -340,11 +343,14 @@ class Producto extends ModelClass
             return false;
         }
 
-        if ($this->nostock && $this->stockfis != 0 && null !== $this->idproducto) {
-            $sql = "DELETE FROM " . Stock::tableName() . " WHERE idproducto = " . self::$dataBase->var2str($this->idproducto)
-                . "; UPDATE " . Variante::tableName() . " SET stockfis = 0 WHERE idproducto = "
-                . self::$dataBase->var2str($this->idproducto) . ";";
-            self::$dataBase->exec($sql);
+        if ($this->nostock && null !== $this->idproducto) {
+            $balances = self::$dataBase->select('SELECT idstock FROM stocks WHERE idproducto = '
+                . self::$dataBase->var2str($this->idproducto)
+                . ' AND (cantidad <> 0 OR reservada <> 0 OR pterecibir <> 0) FOR UPDATE');
+            if ($balances) {
+                Tools::log()->warning('Ajuste el inventario y sus reservas a cero antes de desactivar su control.');
+                return false;
+            }
         }
 
         if ($this->nostock) {

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2015-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -23,6 +24,7 @@ use FacturaScripts\Core\Base\DataBase\DataBaseEngine;
 use FacturaScripts\Core\Base\DataBase\MysqlEngine;
 use FacturaScripts\Core\Base\DataBase\PostgresqlEngine;
 use FacturaScripts\Core\KernelException;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
 use FacturaScripts\Core\Tools;
 
 /**
@@ -63,6 +65,9 @@ final class DataBase
      */
     private static $tables = [];
 
+    private static $rollbackOnly = false;
+    private static $inventoryRetryable = false;
+
     /**
      * DataBase constructor and prepare the class to use it.
      */
@@ -95,6 +100,9 @@ final class DataBase
         }
 
         self::$miniLog->debug('Begin Transaction');
+        self::$rollbackOnly = false;
+        self::$inventoryRetryable = false;
+        Inventory::transactionStarted();
         return self::$engine->beginTransaction(self::$link);
     }
 
@@ -132,9 +140,20 @@ final class DataBase
      */
     public function commit(): bool
     {
+        if (
+            Inventory::active()
+            && !Inventory::finishing()
+        ) {
+            return !self::$rollbackOnly;
+        }
+        if (self::$rollbackOnly) {
+            $this->rollback();
+            return false;
+        }
         $result = self::$engine->commit(self::$link);
         if ($result) {
             self::$miniLog->debug('Commit Transaction');
+            Inventory::transactionEnded(true);
         }
 
         return $result;
@@ -226,6 +245,10 @@ final class DataBase
 
             if (!$result) {
                 self::$miniLog->error(self::$engine->errorMessage(self::$link), ['sql' => $sql]);
+                $this->inventoryError(self::$engine->errorMessage(self::$link));
+                if (Inventory::active()) {
+                    self::$rollbackOnly = true;
+                }
             }
 
             if ($inTransaction) {
@@ -363,8 +386,36 @@ final class DataBase
      */
     public function rollback(): bool
     {
+        if (
+            Inventory::active()
+            && !Inventory::finishing()
+        ) {
+            self::$rollbackOnly = true;
+            return true;
+        }
         self::$miniLog->debug('Rollback Transaction');
-        return self::$engine->rollback(self::$link);
+        self::$rollbackOnly = false;
+        $done = self::$engine->rollback(self::$link);
+        Inventory::transactionEnded(false);
+        return $done;
+    }
+
+    public function markRollbackOnly(): void
+    {
+        self::$rollbackOnly = true;
+    }
+
+    public function inventoryRetryable(): bool
+    {
+        return self::$inventoryRetryable;
+    }
+
+    private function inventoryError(string $message): void
+    {
+        if (preg_match('/deadlock|lock wait timeout|could not serialize|serialization failure/i', $message)) {
+            self::$inventoryRetryable = true;
+            self::$rollbackOnly = true;
+        }
     }
 
     /**
@@ -418,6 +469,10 @@ final class DataBase
         $error = self::$engine->errorMessage(self::$link);
         if (!empty($error)) {
             self::$miniLog->error($error, ['sql' => $sql]);
+            $this->inventoryError($error);
+            if (Inventory::active()) {
+                self::$rollbackOnly = true;
+            }
         }
 
         return [];

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2018-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -22,6 +23,7 @@ namespace FacturaScripts\Core\Model;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Base\MyFilesToken;
 use FacturaScripts\Core\Cache;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
 use FacturaScripts\Core\Model\Base\ModelOnChangeClass;
 use FacturaScripts\Core\Model\Base\ModelTrait;
 use FacturaScripts\Core\Tools;
@@ -73,7 +75,8 @@ class AttachedFile extends ModelOnChangeClass
     {
         // eliminamos el archivo
         $fullPath = $this->getFullPath();
-        if (file_exists($fullPath) && false === unlink($fullPath)) {
+        $deferRemoval = Inventory::active();
+        if (!$deferRemoval && file_exists($fullPath) && false === unlink($fullPath)) {
             Tools::log()->warning('cant-delete-file', ['%fileName%' => $this->path]);
             return false;
         }
@@ -82,12 +85,24 @@ class AttachedFile extends ModelOnChangeClass
         $productoImageModel = new ProductoImagen();
         $where = [new DataBaseWhere('idfile', $this->idfile)];
         foreach ($productoImageModel->all($where, [], 0, 0) as $productoImage) {
-            $productoImage->delete();
+            if (!$productoImage->delete()) {
+                return false;
+            }
         }
 
         // eliminamos el registro de la base de datos
         if (false === parent::delete()) {
             return false;
+        }
+
+        if ($deferRemoval) {
+            // Files cannot be restored by a database rollback.
+            $path = $this->path;
+            Inventory::afterCommit(static function () use ($fullPath, $path): void {
+                if (file_exists($fullPath) && !unlink($fullPath)) {
+                    Tools::log()->warning('cant-delete-file', ['%fileName%' => $path]);
+                }
+            });
         }
 
         // eliminamos el registro de la caché
@@ -288,8 +303,10 @@ class AttachedFile extends ModelOnChangeClass
         }
 
         $currentPath = FS_FOLDER . '/MyFiles/' . $this->path;
-        if ($this->getStorageLimit() > 0 &&
-            filesize($currentPath) + static::getStorageUsed([$this->idfile]) > $this->getStorageLimit()) {
+        if (
+            $this->getStorageLimit() > 0 &&
+            filesize($currentPath) + static::getStorageUsed([$this->idfile]) > $this->getStorageLimit()
+        ) {
             Tools::log()->critical('storage-limit-reached');
             unlink($currentPath);
             return false;
@@ -297,8 +314,10 @@ class AttachedFile extends ModelOnChangeClass
 
         $currentTime = time();
         $newFileName = $currentTime . '_' . bin2hex(random_bytes(6)) . '.' . $this->getExtension();
-        if (empty($this->path) ||
-            false === rename($currentPath, $newFolderPath . '/' . $newFileName)) {
+        if (
+            empty($this->path) ||
+            false === rename($currentPath, $newFolderPath . '/' . $newFileName)
+        ) {
             return false;
         }
 
