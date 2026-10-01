@@ -159,6 +159,7 @@ abstract class PurchasesController extends PanelController
         $this->addHtmlView(static::MAIN_VIEW_NAME, static::MAIN_VIEW_TEMPLATE, $this->getModelClassName(), $pageData['title'], 'fas fa-file');
         AssetManager::addCss(FS_ROUTE . '/node_modules/jquery-ui-dist/jquery-ui.min.css', 2);
         AssetManager::addJs(FS_ROUTE . '/node_modules/jquery-ui-dist/jquery-ui.min.js', 2);
+        AssetManager::addJs(FS_ROUTE . '/Dinamic/Assets/JS/DocumentLineDescription.js');
         PurchasesHeaderHTML::assets();
         PurchasesLineHTML::assets();
         PurchasesFooterHTML::assets();
