@@ -187,12 +187,12 @@ class SalesModalHTML
         $sql = 'SELECT v.referencia, p.descripcion, v.idatributovalor1, v.idatributovalor2, v.idatributovalor3,'
             . ' v.idatributovalor4, v.precio, COALESCE(s.disponible, 0) as disponible, p.nostock'
             . ' FROM variantes v'
-            . ' LEFT JOIN productos p ON v.idproducto = p.idproducto'
+            . ' INNER JOIN productos p ON v.idproducto = p.idproducto'
             . ' LEFT JOIN stocks s ON v.referencia = s.referencia AND s.codalmacen = ' . $dataBase->var2str(self::$codalmacen)
             . ' WHERE p.sevende = true AND p.bloqueado = false';
 
         if (self::$codfabricante) {
-            $sql .= ' AND codfabricante = ' . $dataBase->var2str(self::$codfabricante);
+            $sql .= ' AND p.codfabricante = ' . $dataBase->var2str(self::$codfabricante);
         }
 
         if (self::$codfamilia) {
@@ -206,7 +206,7 @@ class SalesModalHTML
                 }
             }
 
-            $sql .= ' AND codfamilia IN (' . implode(',', $codFamilias) . ')';
+            $sql .= ' AND p.codfamilia IN (' . implode(',', $codFamilias) . ')';
         }
 
         if (self::$vendido) {
@@ -215,22 +215,7 @@ class SalesModalHTML
                 . ' WHERE codcliente = ' . $dataBase->var2str(self::$codcliente) . ')';
         }
 
-        if (self::$query) {
-            $words = explode(' ', self::$query);
-            if (count($words) === 1) {
-                $sql .= " AND (LOWER(v.codbarras) = " . $dataBase->var2str(self::$query)
-                    . " OR LOWER(v.referencia) LIKE '%" . self::$query . "%'"
-                    . " OR LOWER(p.descripcion) LIKE '%" . self::$query . "%')";
-            } elseif (count($words) > 1) {
-                $sql .= " AND (LOWER(v.referencia) LIKE '%" . self::$query . "%' OR (";
-                foreach ($words as $wc => $word) {
-                    $sql .= $wc > 0 ?
-                        " AND LOWER(p.descripcion) LIKE '%" . $word . "%'" :
-                        "LOWER(p.descripcion) LIKE '%" . $word . "%'";
-                }
-                $sql .= "))";
-            }
-        }
+        $sql .= static::productSearchWhere($dataBase);
 
         switch (self::$orden) {
             case 'desc_asc':
@@ -256,6 +241,42 @@ class SalesModalHTML
         }
 
         return $results;
+    }
+
+    private static function likeContains(DataBase $dataBase, string $value): string
+    {
+        return $dataBase->var2str('%' . addcslashes($value, "\\%_") . '%');
+    }
+
+    private static function productSearchWhere(DataBase $dataBase): string
+    {
+        $query = trim(preg_replace('/\s+/u', ' ', (string)self::$query));
+        if ($query === '') {
+            return '';
+        }
+
+        $words = array_values(array_filter(explode(' ', $query), static function ($word) {
+            return $word !== '';
+        }));
+        if (empty($words)) {
+            return '';
+        }
+
+        $full = implode(' ', $words);
+        $sql = ' AND (v.codbarras = ' . $dataBase->var2str($full)
+            . ' OR v.referencia LIKE ' . static::likeContains($dataBase, $full);
+
+        if (count($words) === 1) {
+            $sql .= ' OR p.descripcion LIKE ' . static::likeContains($dataBase, $full);
+        } else {
+            $desc = [];
+            foreach ($words as $word) {
+                $desc[] = 'p.descripcion LIKE ' . static::likeContains($dataBase, $word);
+            }
+            $sql .= ' OR (' . implode(' AND ', $desc) . ')';
+        }
+
+        return $sql . ')';
     }
 
     protected static function idatributovalor(?int $id): string
