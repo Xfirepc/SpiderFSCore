@@ -242,6 +242,9 @@ abstract class ModelClass extends ModelCore
      */
     public function exists(): bool
     {
+        if ($this instanceof Stock && Inventory::stockWasRead($this->primaryColumnValue())) {
+            return true;
+        }
         $sql = 'SELECT 1 FROM ' . static::tableName() . ' WHERE ' . static::primaryColumn()
             . ' = ' . self::$dataBase->var2str($this->primaryColumnValue());
 
@@ -610,7 +613,11 @@ abstract class ModelClass extends ModelCore
             && !($this instanceof Stock)
         ) {
             // MySQL repeatable-read snapshots may predate the acquired source lock.
-            return self::$dataBase->select($sql . ' LIMIT 1 FOR UPDATE');
+            $rows = self::$dataBase->select($sql . ' LIMIT 1 FOR UPDATE');
+            if ($rows) {
+                Inventory::rememberCatalogRead(static::tableName(), $rows[0]);
+            }
+            return $rows;
         }
         return empty($code) && empty($where) ? [] : self::$dataBase->selectLimit($sql, 1);
     }

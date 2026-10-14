@@ -20,6 +20,10 @@ final class Inventory
     private static $recorder;
     private static $batchRecorder;
     private static $prepare;
+    private static $schemaPrepared = false;
+    private static $preparingSchema = false;
+    private static $catalogReads = [];
+    private static $stockReads = [];
     private static $operation;
     private static $failed = false;
     private static $finishing = false;
@@ -38,6 +42,8 @@ final class Inventory
     public static function transactionStarted(): void
     {
         StockTotals::clear();
+        self::$catalogReads = [];
+        self::$stockReads = [];
         self::$insertedSources = [];
         self::$snapshots = [];
         self::$afterCommit = [];
@@ -48,6 +54,8 @@ final class Inventory
     public static function transactionEnded(bool $committed): void
     {
         StockTotals::clear();
+        self::$catalogReads = [];
+        self::$stockReads = [];
         self::$insertedSources = [];
         WorkQueue::transactionEnded($committed);
         if (!$committed) {
@@ -125,11 +133,76 @@ final class Inventory
         self::$recorder = $recorder;
         self::$prepare = $prepare;
         self::$batchRecorder = $batchRecorder;
+        self::$schemaPrepared = false;
+    }
+
+    /** Prepare before even an external transaction starts; DDL can commit it. */
+    public static function prepareSchema(): void
+    {
+        if (!self::$prepare || self::$schemaPrepared || self::$preparingSchema) {
+            return;
+        }
+
+        self::$preparingSchema = true;
+        try {
+            call_user_func(self::$prepare);
+            self::$schemaPrepared = true;
+        } finally {
+            self::$preparingSchema = false;
+        }
+    }
+
+    /** Only rows already read FOR UPDATE in this transaction may be reused. */
+    public static function rememberCatalogRead(string $table, array $row): void
+    {
+        self::requireSuccess(self::active(), 'La reutilización requiere una operación de inventario activa.');
+        if ($table === 'productos' && isset($row['idproducto'])) {
+            self::$catalogReads[$table][(string)$row['idproducto']] = $row;
+        } elseif ($table === 'variantes' && isset($row['referencia'])) {
+            self::$catalogReads[$table][$row['referencia']] = $row;
+        }
+    }
+
+    public static function catalogRead(string $table, $key): ?array
+    {
+        return self::$catalogReads[$table][(string)$key] ?? null;
+    }
+
+    /** Any write, including raw SQL and nested hooks, expires these read hints. */
+    public static function forgetCatalogReads(): void
+    {
+        self::$catalogReads = [];
+        self::$stockReads = [];
+    }
+
+    public static function rememberStockRead(array $row): void
+    {
+        if (isset($row['idstock'])) {
+            self::$stockReads[(string)$row['idstock']] = true;
+        }
+    }
+
+    public static function stockWasRead($id): bool
+    {
+        return self::active() && isset(self::$stockReads[(string)$id]);
+    }
+
+    /** Keep the header used to calculate this line's effect with its context. */
+    public static function setContextDocument(BusinessDocumentLine $line, $document): void
+    {
+        foreach (self::$contexts as $index => $context) {
+            if ($context[0] === $line) {
+                self::$contexts[$index][2] = $document;
+            }
+        }
     }
 
     /** Persistence notifications precede hooks, including nested stock writes. */
     public static function modelPersisted($model, array $values = [], bool $deleted = false, bool $autoInserted = false): void
     {
+        if ($deleted) {
+            unset(self::$insertedSources[$model::tableName()][(string)$model->primaryColumnValue()]);
+        }
         if ($autoInserted && self::active()) {
             self::$insertedSources[$model::tableName()][(string) $model->primaryColumnValue()] = true;
         }
@@ -149,6 +222,8 @@ final class Inventory
     public static function modelIdentityChanged(): void
     {
         StockTotals::clear();
+        self::$catalogReads = [];
+        self::$stockReads = [];
         self::$insertedSources = [];
     }
 
@@ -206,9 +281,7 @@ final class Inventory
         $root = !self::active();
         $owner = !$db->inTransaction();
         if ($root) {
-            if (self::$prepare) {
-                call_user_func(self::$prepare);
-            }
+            self::prepareSchema();
 
             self::$events = [];
             self::$checks = [];
@@ -302,7 +375,9 @@ final class Inventory
 
         $source = $stock;
         $kind = 'adjustment';
-        foreach (self::$contexts as [$contextSource, $contextKind]) {
+        $document = null;
+        foreach (self::$contexts as $context) {
+            list($contextSource, $contextKind) = $context;
             if ($contextSource === null && $contextKind !== 'save') {
                 $kind = $contextKind;
             }
@@ -317,12 +392,13 @@ final class Inventory
             if ($contextSource !== null) {
                 $source = $contextSource;
                 $kind = $contextKind;
+                $document = $context[2] ?? null;
             }
         }
 
         self::$events[] = [
             'source' => $source, 'kind' => $kind, 'idproducto' => $stock->idproducto,
-            'document' => $source instanceof BusinessDocumentLine ? $source->getDocument() : null,
+            'document' => $source instanceof BusinessDocumentLine ? ($document ?? $source->getDocument()) : null,
             'referencia' => $stock->referencia, 'codalmacen' => $stock->codalmacen,
             'before' => $before, 'after' => $after,
         ];

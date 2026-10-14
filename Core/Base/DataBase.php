@@ -99,6 +99,7 @@ final class DataBase
             return true;
         }
 
+        Inventory::prepareSchema();
         self::$miniLog->debug('Begin Transaction');
         self::$rollbackOnly = false;
         self::$inventoryRetryable = false;
@@ -228,6 +229,7 @@ final class DataBase
     {
         $result = $this->connected();
         if ($result) {
+            Inventory::forgetCatalogReads();
             // clean the list of tables, since there could be changes when executing this sql.
             self::$tables = [];
 

@@ -67,11 +67,11 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
         // A warehouse/status change and a line insert must share the header lock.
         $document = $this->getDocument();
         Inventory::requireSuccess(
-            !empty($document->primaryColumnValue()) && !empty(self::$dataBase->select(
+            !empty($document->primaryColumnValue()) && (Inventory::sourceWasInserted($document) || !empty(self::$dataBase->select(
                 'SELECT ' . $document::primaryColumn() . ' FROM ' . $document::tableName()
                 . ' WHERE ' . $document::primaryColumn() . ' = '
                 . self::$dataBase->var2str($document->primaryColumnValue()) . ' FOR UPDATE'
-            )),
+            ))),
             'El documento de origen ya no existe.'
         );
         parent::lockInventorySource();
@@ -545,6 +545,7 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
 
         $doc = $this->getDocument();
         $oldReference = $this->previousData['referencia'] ?? $this->referencia;
+        Inventory::setContextDocument($this, $doc);
         $references = array_unique(array_filter([$oldReference, $this->referencia]));
         sort($references, SORT_STRING);
         foreach ($references as $reference) {

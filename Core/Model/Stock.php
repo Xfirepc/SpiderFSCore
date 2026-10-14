@@ -223,11 +223,17 @@ class Stock extends ModelClass
             }
             // The product lock also serializes creation of a previously absent stock row
             // and updates of product totals across variants and warehouses.
-            $products = self::$dataBase->select('SELECT * FROM productos WHERE idproducto = '
-                . self::$dataBase->var2str($this->idproducto) . ' FOR UPDATE');
+            $productRead = Inventory::catalogRead('productos', $this->idproducto);
+            $products = $productRead === null
+                ? self::$dataBase->select('SELECT * FROM productos WHERE idproducto = '
+                    . self::$dataBase->var2str($this->idproducto) . ' FOR UPDATE')
+                : [$productRead];
             Inventory::requireSuccess(!empty($products), 'Producto de inventario inexistente.');
-            $variants = self::$dataBase->select('SELECT idproducto FROM variantes WHERE referencia = '
-                . self::$dataBase->var2str($this->referencia) . ' FOR UPDATE');
+            $variantRead = Inventory::catalogRead('variantes', $this->referencia);
+            $variants = $variantRead === null
+                ? self::$dataBase->select('SELECT idproducto FROM variantes WHERE referencia = '
+                    . self::$dataBase->var2str($this->referencia) . ' FOR UPDATE')
+                : [$variantRead];
             Inventory::requireSuccess(
                 count($variants) === 1 && $variants[0]['idproducto'] == $this->idproducto,
                 'La referencia no pertenece al producto del saldo.'
@@ -280,6 +286,7 @@ class Stock extends ModelClass
             foreach ($after as $field => $value) {
                 $this->{$field} = $value;
             }
+            Inventory::rememberStockRead($current);
             if (!parent::save()) {
                 return false;
             }
