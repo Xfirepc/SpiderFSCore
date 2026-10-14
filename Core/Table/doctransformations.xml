@@ -50,4 +50,7 @@
         <name>doctransformations_pkey</name>
         <type>PRIMARY KEY (id)</type>
     </constraint>
+    <!-- Including the primary key gives indexed lookups without restricting existing relations. -->
+    <constraint><name>doc_transform_source_lookup</name><type>UNIQUE (model1, iddoc1, idlinea1, id)</type></constraint>
+    <constraint><name>doc_transform_target_lookup</name><type>UNIQUE (model2, iddoc2, idlinea2, id)</type></constraint>
 </table>

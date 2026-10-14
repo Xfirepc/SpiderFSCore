@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2013-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -464,7 +465,9 @@ abstract class BusinessDocument extends ModelOnChangeClass
         switch ($field) {
             case 'codalmacen':
                 foreach ($this->getLines() as $line) {
-                    $line->transfer($this->previousData['codalmacen'], $this->codalmacen);
+                    if (!$line->transfer($this->previousData['codalmacen'], $this->codalmacen)) {
+                        return false;
+                    }
                 }
                 break;
 

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2017-2023 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -23,6 +24,7 @@ use Exception;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Lib\API\Base\APIResourceClass;
 use FacturaScripts\Core\Model\Base\ModelClass;
+use FacturaScripts\Core\Model\Stock;
 use FacturaScripts\Core\Tools;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -84,6 +86,7 @@ class APIModel extends APIResourceClass
                     'is_nullable' => $value['is_nullable']
                 ];
             }
+
             $this->returnResult($data);
             return true;
         }
@@ -333,7 +336,9 @@ class APIModel extends APIResourceClass
 
     private function saveResource(): bool
     {
-        if ($this->model->save()) {
+        $saved = $this->model instanceof Stock
+            ? $this->model->saveAbsolute() : $this->model->save();
+        if ($saved) {
             $this->setOk(Tools::lang()->trans('record-updated-correctly'), $this->model->toArray());
             return true;
         }

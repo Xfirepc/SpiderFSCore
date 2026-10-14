@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2018-2024 Carlos García Gómez <carlos@facturascripts.com>
@@ -380,6 +381,7 @@ class Variante extends Base\ModelClass
         if (empty($this->referencia)) {
             $this->referencia = (string)$this->newCode('referencia');
         }
+
         if (strlen($this->referencia) > 30) {
             Tools::log()->warning(
                 'invalid-column-lenght',
@@ -416,13 +418,15 @@ class Variante extends Base\ModelClass
             $stock->codalmacen = Tools::settings('default', 'codalmacen');
             $stock->idproducto = $this->idproducto;
             $stock->referencia = $this->referencia;
-            $stock->save();
+            if (!$stock->saveAbsolute()) {
+                return false;
+            }
         }
 
         return true;
     }
 
-    public function newCode(string $field = '', array $where = []):int 
+    public function newCode(string $field = '', array $where = []): int
     {
         if (empty($field)) {
             $field = static::primaryColumn();
@@ -430,11 +434,10 @@ class Variante extends Base\ModelClass
 
         $code = time();
         $where = [new DataBaseWhere($field, $code)];
-        if ($this->count($where) > 0)
+        if ($this->count($where) > 0) {
             $code = $code + 1;
+        }
 
         return $code;
-
     }
-
 }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2018-2023 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -20,8 +21,10 @@
 namespace FacturaScripts\Core\Lib;
 
 use FacturaScripts\Core\Base\Calculator;
+use FacturaScripts\Core\Base\DataBase;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Base\ExtensionsTrait;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
 use FacturaScripts\Core\Model\Base\BusinessDocument;
 use FacturaScripts\Core\Model\Base\BusinessDocumentLine;
 use FacturaScripts\Core\Model\Base\TransformerDocument;
@@ -58,6 +61,23 @@ class BusinessDocumentGenerator
      * @return bool
      */
     public function generate(BusinessDocument $prototype, string $newClass, array $lines = [], array $quantity = [], array $properties = []): bool
+    {
+        $db = new DataBase();
+        return Inventory::run(
+            $db,
+            function () use ($prototype, $newClass, $lines, $quantity, $properties): bool {
+                $previousDocs = $this->lastDocs;
+                Inventory::afterRollback(function () use ($previousDocs): void {
+                    $this->lastDocs = $previousDocs;
+                });
+                return $this->generateDocument($prototype, $newClass, $lines, $quantity, $properties);
+            },
+            $prototype,
+            'transform'
+        );
+    }
+
+    private function generateDocument(BusinessDocument $prototype, string $newClass, array $lines, array $quantity, array $properties): bool
     {
         $newDocClass = '\\FacturaScripts\\Dinamic\\Model\\' . $newClass;
         $newDoc = new $newDocClass();
@@ -102,8 +122,7 @@ class BusinessDocumentGenerator
                 // add to last doc list
                 $this->lastDocs[] = $newDoc;
 
-                $this->pipeFalse('generateTrue', $prototype, $lines, $quantity, $properties, $newDoc, $newLines);
-                return true;
+                return $this->pipeFalse('generateTrue', $prototype, $lines, $quantity, $properties, $newDoc, $newLines);
             }
         }
 
@@ -144,6 +163,15 @@ class BusinessDocumentGenerator
         $fields = array_keys($newDoc->getNewLine()->getModelFields());
 
         foreach ($lines as $line) {
+            if (!empty($line->anulada)) {
+                continue;
+            }
+
+            if (!empty($line->stockparent)) {
+                // Its parent recreates the component using the stored factor.
+                continue;
+            }
+
             // copy line properties to new line
             $arrayLine = [];
             foreach (array_keys($line->getModelFields()) as $field) {
@@ -169,6 +197,11 @@ class BusinessDocumentGenerator
             }
 
             $newLine = $newDoc->getNewLine($arrayLine);
+            $newLine->stockcompositionsource = $line;
+            if (in_array($prototype->modelClassName(), ['AlbaranCliente', 'AlbaranProveedor'], true)) {
+                $newLine->stocktracesource = $line;
+            }
+
             if (!$newLine->save()) {
                 return false;
             }

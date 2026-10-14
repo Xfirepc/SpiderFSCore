@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2019-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -18,6 +19,8 @@
  */
 
 namespace FacturaScripts\Core\Model\Base;
+
+use FacturaScripts\Core\Lib\Inventory\Inventory;
 
 /**
  * ModelOnChangeClass is a class with methods to model the changes of values in the properties of the model.
@@ -41,13 +44,15 @@ abstract class ModelOnChangeClass extends ModelClass
 
     public function delete(): bool
     {
-        if (parent::delete()) {
+        return Inventory::model(self::$dataBase, $this, function (): bool {
+            if (!parent::delete()) {
+                return false;
+            }
+
             $this->onDelete();
             $this->setPreviousData();
             return true;
-        }
-
-        return false;
+        }, 'delete');
     }
 
     public function hasChanged(string $field): bool
@@ -87,6 +92,10 @@ abstract class ModelOnChangeClass extends ModelClass
      */
     protected function onChange($field)
     {
+        if (Inventory::active() || Inventory::applies($this)) {
+            return $this->pipeFalse('onChange', $field);
+        }
+
         if ($this->pipe('onChange', $field) === false) {
             return false;
         }
@@ -99,7 +108,7 @@ abstract class ModelOnChangeClass extends ModelClass
      */
     protected function onDelete()
     {
-        $this->pipe('onDelete');
+        $this->inventoryEvent('onDelete');
     }
 
     /**
@@ -107,7 +116,7 @@ abstract class ModelOnChangeClass extends ModelClass
      */
     protected function onInsert()
     {
-        $this->pipe('onInsert');
+        $this->inventoryEvent('onInsert');
     }
 
     /**
@@ -115,7 +124,16 @@ abstract class ModelOnChangeClass extends ModelClass
      */
     protected function onUpdate()
     {
-        $this->pipe('onUpdate');
+        $this->inventoryEvent('onUpdate');
+    }
+
+    private function inventoryEvent(string $name): void
+    {
+        if (Inventory::active() || Inventory::applies($this)) {
+            Inventory::requireSuccess($this->pipeFalse($name));
+        } else {
+            $this->pipe($name);
+        }
     }
 
     /**

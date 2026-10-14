@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2021-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -29,8 +30,8 @@ use FacturaScripts\Core\Lib\ExtendedController\DocFilesTrait;
 use FacturaScripts\Core\Lib\ExtendedController\LogAuditTrait;
 use FacturaScripts\Core\Lib\ExtendedController\PanelController;
 use FacturaScripts\Core\Model\Base\PurchaseDocument;
-use FacturaScripts\Core\Session;
 use FacturaScripts\Core\Model\Base\PurchaseDocumentLine;
+use FacturaScripts\Core\Session;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Lib\AssetManager;
 use FacturaScripts\Dinamic\Model\Proveedor;
@@ -370,7 +371,11 @@ abstract class PurchasesController extends PanelController
             return false;
         }
 
-        $this->dataBase->beginTransaction();
+        $ownsTransaction = !$this->dataBase->inTransaction();
+        if ($ownsTransaction && !$this->dataBase->beginTransaction()) {
+            $this->sendJsonWithLogs(['ok' => false]);
+            return false;
+        }
 
         $model = $this->getModel();
         $formData = json_decode($this->request->request->get('data'), true);
@@ -411,8 +416,12 @@ abstract class PurchasesController extends PanelController
             return false;
         }
 
+        if ($ownsTransaction && !$this->dataBase->commit()) {
+            $this->dataBase->rollback();
+            $this->sendJsonWithLogs(['ok' => false]);
+            return false;
+        }
         $this->sendJsonWithLogs(['ok' => true, 'newurl' => $model->url() . '&action=save-ok']);
-        $this->dataBase->commit();
         return true;
     }
 
@@ -434,9 +443,11 @@ abstract class PurchasesController extends PanelController
         if ($paid && array_key_exists('codpagorecibo', $formData)) {
             $paymentMethod = null;
             foreach (FormasPago::all() as $method) {
-                if ($method->codpago === $formData['codpagorecibo']
+                if (
+                    $method->codpago === $formData['codpagorecibo']
                     && $method->idempresa == $model->idempresa
-                    && ($method->activa || $method->codpago === $model->codpago)) {
+                    && ($method->activa || $method->codpago === $model->codpago)
+                ) {
                     $paymentMethod = $method;
                     break;
                 }
@@ -449,8 +460,10 @@ abstract class PurchasesController extends PanelController
         }
 
         // El estado de cobro no requiere reescribir una factura contabilizada.
-        if ($model->editable && (!AccountingSettings::isEnabled() || empty($model->idasiento))
-            && false === $this->saveDocAction()) {
+        if (
+            $model->editable && (!AccountingSettings::isEnabled() || empty($model->idasiento))
+            && false === $this->saveDocAction()
+        ) {
             return false;
         }
 
@@ -507,13 +520,19 @@ abstract class PurchasesController extends PanelController
             return false;
         }
 
+        if (!$this->dataBase->beginTransaction()) {
+            $this->sendJsonWithLogs(['ok' => false]);
+            return false;
+        }
         if ($this->getModel()->editable && false === $this->saveDocAction()) {
+            $this->dataBase->rollback();
             return false;
         }
 
         $model = $this->getModel();
         $model->idestado = (int)$this->request->request->get('selectedLine');
-        if (false === $model->save()) {
+        if (false === $model->save() || !$this->dataBase->commit()) {
+            $this->dataBase->rollback();
             $this->sendJsonWithLogs(['ok' => false]);
             return false;
         }

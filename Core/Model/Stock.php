@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2013-2023 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -20,6 +21,8 @@
 namespace FacturaScripts\Core\Model;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
+use FacturaScripts\Core\Lib\Inventory\StockTotals;
 use FacturaScripts\Core\Model\Base\ModelClass;
 use FacturaScripts\Core\Model\Base\ModelTrait;
 use FacturaScripts\Core\Model\Base\ProductRelationTrait;
@@ -39,6 +42,60 @@ class Stock extends ModelClass
     use ProductRelationTrait;
 
     const MAX_DECIMALS = 3;
+
+    private $inventoryOriginal = [];
+    private $absoluteQuantity = false;
+    private $requireNonNegative = false;
+    private $saleAllowsNegative;
+
+    public function loadFromData(array $data = [], array $exclude = [])
+    {
+        parent::loadFromData($data, $exclude);
+        if (empty($this->inventoryOriginal) && !empty($data['idstock'])) {
+            $this->inventoryOriginal = $this->toArray();
+        }
+    }
+
+    public function loadFromCode($code, array $where = [], array $order = []): bool
+    {
+        if (!parent::loadFromCode($code, $where, $order)) {
+            return false;
+        }
+        $this->inventoryOriginal = $this->toArray();
+        return true;
+    }
+
+    /** Counts/imports replace the physical balance at the instant of application. */
+    public function saveAbsolute(): bool
+    {
+        $this->absoluteQuantity = true;
+        try {
+            return $this->save();
+        } finally {
+            $this->absoluteQuantity = false;
+        }
+    }
+
+    public function requireNonNegative(bool $required = true): void
+    {
+        $this->requireNonNegative = $required;
+    }
+
+    /** Apply the sold recipe's policy only to this ingredient write. */
+    public function saveForSale(bool $allowNegative): bool
+    {
+        // Capture the model before installing the policy, including in an outer
+        // transaction, so rollback cannot restore a temporary permission later.
+        return Inventory::run(self::$dataBase, function () use ($allowNegative): bool {
+            $previousPolicy = $this->saleAllowsNegative;
+            $this->saleAllowsNegative = $allowNegative;
+            try {
+                return $this->save();
+            } finally {
+                $this->saleAllowsNegative = $previousPolicy;
+            }
+        }, $this, 'save');
+    }
 
     /**
      * Quantity.
@@ -118,17 +175,29 @@ class Stock extends ModelClass
         $this->reservada = 0.0;
         $this->stockmax = 0.0;
         $this->stockmin = 0.0;
+        $this->inventoryOriginal = [];
     }
 
     public function delete(): bool
     {
-        if (parent::delete()) {
-            $this->cantidad = 0.0;
-            $this->updateProductStock();
-            return true;
-        }
-
-        return false;
+        return Inventory::run(self::$dataBase, function (): bool {
+            $rows = self::$dataBase->select('SELECT * FROM stocks WHERE idstock = '
+                . self::$dataBase->var2str($this->idstock) . ' FOR UPDATE');
+            if (!$rows) {
+                return true;
+            }
+            foreach (['cantidad', 'reservada', 'pterecibir'] as $field) {
+                if (abs((float)$rows[0][$field]) > 0.0005) {
+                    Tools::log()->warning('Aplique un ajuste explícito y libere las reservas antes de eliminar el saldo.');
+                    return false;
+                }
+            }
+            if (!parent::delete()) {
+                return false;
+            }
+            return (float) $rows[0]['cantidad'] !== 0.0
+                ? $this->updateProductStock() : $this->writeProductStock();
+        }, $this, 'delete');
     }
 
     public function install(): string
@@ -148,12 +217,82 @@ class Stock extends ModelClass
 
     public function save(): bool
     {
-        if (parent::save()) {
-            $this->updateProductStock();
+        return Inventory::run(self::$dataBase, function (): bool {
+            if (!$this->test()) {
+                return false;
+            }
+            // The product lock also serializes creation of a previously absent stock row
+            // and updates of product totals across variants and warehouses.
+            $products = self::$dataBase->select('SELECT * FROM productos WHERE idproducto = '
+                . self::$dataBase->var2str($this->idproducto) . ' FOR UPDATE');
+            Inventory::requireSuccess(!empty($products), 'Producto de inventario inexistente.');
+            $variants = self::$dataBase->select('SELECT idproducto FROM variantes WHERE referencia = '
+                . self::$dataBase->var2str($this->referencia) . ' FOR UPDATE');
+            Inventory::requireSuccess(
+                count($variants) === 1 && $variants[0]['idproducto'] == $this->idproducto,
+                'La referencia no pertenece al producto del saldo.'
+            );
+            foreach (['referencia', 'codalmacen', 'idproducto'] as $identity) {
+                Inventory::requireSuccess(
+                    !isset($this->inventoryOriginal[$identity])
+                    || $this->inventoryOriginal[$identity] == $this->{$identity},
+                    'Use una transferencia para cambiar la identidad o el almacén de un saldo.'
+                );
+            }
+            $rows = self::$dataBase->select('SELECT * FROM stocks WHERE referencia = '
+                . self::$dataBase->var2str($this->referencia) . ' AND codalmacen = '
+                . self::$dataBase->var2str($this->codalmacen) . ' FOR UPDATE');
+            Inventory::requireSuccess(count($rows) <= 1, 'Hay saldos duplicados; requieren revisión manual.');
+            $current = $rows[0] ?? [];
+            Inventory::requireSuccess(
+                !$current || $current['idproducto'] == $this->idproducto,
+                'El saldo histórico está vinculado a otro producto. Requiere revisión manual.'
+            );
+            $before = $after = [];
+            foreach (['cantidad', 'reservada', 'pterecibir'] as $field) {
+                $before[$field] = round((float)($current[$field] ?? 0), self::MAX_DECIMALS);
+                $delta = round($this->{$field} - ($this->inventoryOriginal[$field] ?? 0), self::MAX_DECIMALS);
+                $after[$field] = ($this->absoluteQuantity && $field === 'cantidad')
+                    ? $this->cantidad : round($before[$field] + $delta, self::MAX_DECIMALS);
+            }
+            $delta = $after['cantidad'] - $before['cantidad'];
+            foreach (['reservada', 'pterecibir'] as $field) {
+                Inventory::requireSuccess(
+                    $after[$field] >= min(0, $before[$field]),
+                    'El movimiento generaría compromisos negativos. Revise las cantidades pendientes.'
+                );
+            }
+            Inventory::requireSuccess(empty($products[0]['nostock']) || $before == $after
+                || array_sum(array_map('abs', $after)) === 0.0, 'El producto no controla existencias.');
+            if (
+                !$this->absoluteQuantity && $delta < 0 && $after['cantidad'] < 0
+                && ($this->requireNonNegative || !($this->saleAllowsNegative ?? !empty($products[0]['ventasinstock'])))
+            ) {
+                Tools::log()->warning('not-enough-stock', ['%reference%' => $this->referencia]);
+                return false;
+            }
+            foreach (['stockmin', 'stockmax', 'ubicacion'] as $field) {
+                if (isset($current[$field]) && $this->{$field} == ($this->inventoryOriginal[$field] ?? null)) {
+                    $this->{$field} = $current[$field];
+                }
+            }
+            $this->idstock = $current['idstock'] ?? null;
+            foreach ($after as $field => $value) {
+                $this->{$field} = $value;
+            }
+            if (!parent::save()) {
+                return false;
+            }
+            // Compare persisted precision, not the rounded journal delta: normalizing
+            // a legacy balance with extra decimals can still change the physical total.
+            $physicalChanged = (float) ($current['cantidad'] ?? 0) !== (float) $this->cantidad;
+            if (!($physicalChanged ? $this->updateProductStock() : $this->writeProductStock())) {
+                return false;
+            }
+            Inventory::record($this, $before, $after);
+            $this->inventoryOriginal = $this->toArray();
             return true;
-        }
-
-        return false;
+        }, $this, $this->absoluteQuantity ? 'adjustment' : 'save');
     }
 
     public static function tableName(): string
@@ -166,31 +305,47 @@ class Stock extends ModelClass
      *
      * @param string $toWarehouse destination warehouse
      * @param float $qty quantity to move
+     * @param ModelClass|null $source persisted document line identifying the transfer
+     * @param bool $reversal compensate the lots allocated to that source
      *
      * @return bool
      */
-    public function transferTo(string $toWarehouse, float $qty): bool
+    public function transferTo(string $toWarehouse, float $qty, ?ModelClass $source = null, bool $reversal = false): bool
     {
-        $destination = new static();
-        $where = [
-            new DataBaseWhere('codalmacen', $toWarehouse),
-            new DataBaseWhere('referencia', $this->referencia)
-        ];
-        if ($destination->loadFromCode('', $where)) {
-            $destination->cantidad += $qty;
-        } else {
-            $destination->codalmacen = $toWarehouse;
-            $destination->idproducto = $this->idproducto;
-            $destination->referencia = $this->referencia;
-            $destination->cantidad = $qty;
-        }
+        return Inventory::run(self::$dataBase, function () use ($toWarehouse, $qty, $source, $reversal): bool {
+            if ($toWarehouse === $this->codalmacen || $qty == 0) {
+                return true;
+            }
+            $destination = new static();
+            $where = [
+                new DataBaseWhere('codalmacen', $toWarehouse),
+                new DataBaseWhere('referencia', $this->referencia)
+            ];
+            if ($destination->loadFromCode('', $where)) {
+                $destination->cantidad += $qty;
+            } else {
+                $destination->codalmacen = $toWarehouse;
+                $destination->idproducto = $this->idproducto;
+                $destination->referencia = $this->referencia;
+                $destination->cantidad = $qty;
+            }
 
-        $this->cantidad -= $qty;
-        return $destination->save() && $this->save();
+            $this->cantidad -= $qty;
+            $this->requireNonNegative($qty > 0);
+            $destination->requireNonNegative($qty < 0);
+            $done = strcmp($this->codalmacen, $toWarehouse) < 0
+                ? $this->save() && $destination->save() : $destination->save() && $this->save();
+            return $done && $this->pipeFalse('transferTo', $toWarehouse, $qty, $source, $reversal);
+        }, $this, 'transfer');
     }
 
     public function test(): bool
     {
+        foreach (['cantidad', 'reservada', 'pterecibir'] as $field) {
+            if (!is_finite((float)$this->{$field})) {
+                return false;
+            }
+        }
         $this->ubicacion = Tools::noHtml($this->ubicacion);
 
         $this->cantidad = round($this->cantidad, self::MAX_DECIMALS);
@@ -238,14 +393,25 @@ class Stock extends ModelClass
 
     protected function updateProductStock(): bool
     {
-        $total = $this->totalFromProduct($this->idproducto);
-        $sql = "UPDATE " . DinProducto::tableName() . " SET stockfis = " . self::$dataBase->var2str($total)
-            . ", actualizado = " . self::$dataBase->var2str(Tools::dateTime())
-            . " WHERE idproducto = " . self::$dataBase->var2str($this->idproducto) . ';';
+        return $this->writeProductStock(StockTotals::get(self::$dataBase, $this->idproducto, $this->referencia));
+    }
 
-        $totalVariant = $this->totalFromProduct($this->idproducto, $this->referencia);
-        $sql .= "UPDATE " . DinVariante::tableName() . " SET stockfis = " . self::$dataBase->var2str($totalVariant)
-            . " WHERE referencia = " . self::$dataBase->var2str($this->referencia) . ';';
+    private function writeProductStock(?array $totals = null): bool
+    {
+        // These are derived totals, not product edits: avoid invoking product and
+        // variant save hooks recursively while their stock locks are held. Preserve
+        // the product's update timestamp even for reservations or location changes.
+        $sql = 'UPDATE ' . DinProducto::tableName() . ' SET actualizado = '
+            . self::$dataBase->var2str(Tools::dateTime());
+        if ($totals !== null) {
+            $sql .= ', stockfis = ' . self::$dataBase->var2str($totals[0]);
+        }
+        $sql .= ' WHERE idproducto = ' . self::$dataBase->var2str($this->idproducto) . ';';
+
+        if ($totals !== null) {
+            $sql .= 'UPDATE ' . DinVariante::tableName() . ' SET stockfis = ' . self::$dataBase->var2str($totals[1])
+                . ' WHERE referencia = ' . self::$dataBase->var2str($this->referencia) . ';';
+        }
 
         return self::$dataBase->exec($sql);
     }

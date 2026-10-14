@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2023-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -37,6 +38,24 @@ final class WorkQueue
 
     /** @var array */
     private static $workers_list = [];
+    private static $transactionEvents = [];
+    private static $transactionOpen = false;
+
+    public static function transactionStarted(): void
+    {
+        self::$transactionEvents = self::$new_events;
+        self::$transactionOpen = true;
+    }
+
+    public static function transactionEnded(bool $committed): void
+    {
+        if (self::$transactionOpen && !$committed) {
+            self::$new_events = self::$transactionEvents;
+        }
+
+        self::$transactionEvents = [];
+        self::$transactionOpen = false;
+    }
 
     public static function addWorker(string $worker_name, string $event = '*', int $position = 0): void
     {

@@ -1,14 +1,15 @@
 <?php
+
 /**
  * Copyright (C) 2021-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
  */
 
 namespace FacturaScripts\Core\Controller;
 
-use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Base\AjaxForms\SalesController;
 use FacturaScripts\Core\Base\Calculator;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Core\Lib\Accounting\AccountingSettings;
 use FacturaScripts\Core\Lib\ExtendedController\BaseView;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Lib\Accounting\InvoiceToAccounting;
@@ -170,6 +171,7 @@ class EditFacturaCliente extends SalesController
             if ($ownsTransaction && $this->dataBase->inTransaction()) {
                 $this->dataBase->rollback();
             }
+
             Tools::log()->error('record-save-error');
             return true;
         }
@@ -179,6 +181,7 @@ class EditFacturaCliente extends SalesController
                 Tools::log()->error('accounting-transaction-error');
                 return true;
             }
+
             Tools::log()->notice('record-updated-correctly');
             return true;
         }
@@ -186,6 +189,7 @@ class EditFacturaCliente extends SalesController
         if ($ownsTransaction && $this->dataBase->inTransaction()) {
             $this->dataBase->rollback();
         }
+
         Tools::log()->error('record-save-error');
         return true;
     }
@@ -244,6 +248,7 @@ class EditFacturaCliente extends SalesController
                     $this->setSettings($viewName, 'active', false);
                     break;
                 }
+
                 $where = [new DataBaseWhere('idfacturarect', $this->getViewModelValue($mvn, 'idfactura'))];
                 $view->loadData('', $where);
                 break;
@@ -274,6 +279,7 @@ class EditFacturaCliente extends SalesController
                 $lines[] = $line;
             }
         }
+
         if (empty($lines)) {
             Tools::log()->warning('no-selected-item');
             return true;
@@ -311,7 +317,13 @@ class EditFacturaCliente extends SalesController
         }
 
         foreach ($lines as $line) {
+            if (!empty($line->stockparent)) {
+                continue;
+            }
+
             $newLine = $newRefund->getNewLine($line->toArray());
+            $newLine->stockparent = null;
+            $newLine->stockcompositionsource = $line;
             $newLine->cantidad = 0 - (float)$this->request->request->get('refund_' . $line->primaryColumnValue(), '0');
             $newLine->idlinearect = $line->idlinea;
             if (false === $newLine->save()) {
@@ -345,7 +357,12 @@ class EditFacturaCliente extends SalesController
             return true;
         }
 
-        $this->dataBase->commit();
+        if (!$this->dataBase->commit()) {
+            $this->dataBase->rollback();
+            Tools::log()->error('record-save-error');
+            return true;
+        }
+
         Tools::log()->notice('record-updated-correctly');
         $this->redirect($newRefund->url() . '&action=save-ok');
         return false;

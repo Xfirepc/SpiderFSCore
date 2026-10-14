@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2013-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -20,6 +21,9 @@
 namespace FacturaScripts\Core\Model\Base;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
+use FacturaScripts\Core\Lib\Inventory\RefundQuantity;
+use FacturaScripts\Core\Lib\Inventory\StockContribution;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Model\Impuesto;
 use FacturaScripts\Dinamic\Model\Producto;
@@ -41,6 +45,37 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
      * @var int
      */
     public $actualizastock;
+
+    /** Physical delivery already recorded by another source (e.g. Gym). */
+    public $stockneutral = false;
+
+    /** Explicit component parent; never identify a component by reference alone. */
+    public $stockparent;
+
+    /** Resolved ingredient quantities, stored when this line first affects inventory. */
+    public $stockcomposition;
+    public $stockpack;
+    public $stockfactor;
+    public $stockcancelmode;
+    public $stocktracesource;
+    public $stockreturnsource;
+    public $stockcompositionsource;
+    public $allowComponentDelete = false;
+
+    public function lockInventorySource(): void
+    {
+        // A warehouse/status change and a line insert must share the header lock.
+        $document = $this->getDocument();
+        Inventory::requireSuccess(
+            !empty($document->primaryColumnValue()) && !empty(self::$dataBase->select(
+                'SELECT ' . $document::primaryColumn() . ' FROM ' . $document::tableName()
+                . ' WHERE ' . $document::primaryColumn() . ' = '
+                . self::$dataBase->var2str($document->primaryColumnValue()) . ' FOR UPDATE'
+            )),
+            'El documento de origen ya no existe.'
+        );
+        parent::lockInventorySource();
+    }
 
     /**
      * Quantity.
@@ -270,15 +305,68 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
 
     public function save(): bool
     {
-        $done = parent::save();
-        $this->disableUpdateStock(false);
-        return $done;
+        try {
+            return Inventory::run(self::$dataBase, function (): bool {
+                if (!RefundQuantity::validate(self::$dataBase, $this)) {
+                    return false;
+                }
+                if (
+                    $this->idlinea && (($this->previousData[$this->documentColumn()] ?? $this->documentColumnValue()) != $this->documentColumnValue()
+                    || (!empty($this->previousData['stockparent']) && $this->previousData['stockparent'] != $this->stockparent))
+                ) {
+                    Tools::log()->warning('La línea conserva su documento y su pack de origen. Cree una línea nueva para cambiar de origen.');
+                    return false;
+                }
+                if ($this->stockcancelmode !== null) {
+                    $this->actualizastock = (int)$this->stockcancelmode;
+                    $this->servido = 0;
+                }
+                if (!empty($this->stockparent)) {
+                    $rows = self::$dataBase->select('SELECT * FROM ' . static::tableName()
+                        . ' WHERE idlinea = ' . self::$dataBase->var2str($this->stockparent)
+                        . ' AND ' . $this->documentColumn() . ' = '
+                        . self::$dataBase->var2str($this->documentColumnValue()) . ' FOR UPDATE');
+                    Inventory::requireSuccess(!empty($rows), 'No existe la línea padre del componente.');
+                    if (!empty($this->idlinea)) {
+                        $desired = $this->toArray();
+                        if (!$this->loadFromCode($this->idlinea)) {
+                            return false;
+                        }
+                        foreach (['pvpunitario', 'dtopor', 'descripcion', 'orden'] as $field) {
+                            $this->{$field} = $desired[$field];
+                        }
+                    }
+                    $this->cantidad = $rows[0]['cantidad'] * $this->stockfactor;
+                    $this->servido = $rows[0]['servido'] * $this->stockfactor;
+                    $this->actualizastock = (int)$rows[0]['actualizastock'];
+                }
+                return parent::save();
+            }, $this, 'save');
+        } finally {
+            $this->disableUpdateStock(false);
+        }
     }
 
     public function setPriceWithTax(float $price): void
     {
         $newPrice = (100 * $price) / (100 + $this->getTax()->iva);
         $this->pvpunitario = round($newPrice, Producto::ROUND_DECIMALS);
+    }
+
+    public function delete(): bool
+    {
+        if ($this->stockparent && !$this->allowComponentDelete) {
+            Tools::log()->warning('El componente pertenece a un pack. Modifique o elimine la línea padre.');
+            return false;
+        }
+        if ((int)$this->stockcancelmode === -1) {
+            Tools::log()->warning('La línea registra consumo o merma. Registre una devolución física o un ajuste explícito.');
+            return false;
+        }
+        return Inventory::run(self::$dataBase, function (): bool {
+            return RefundQuantity::validateSource(self::$dataBase, $this, true)
+                && parent::delete();
+        }, $this, 'delete');
     }
 
     /**
@@ -291,39 +379,32 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
      */
     public function transfer($fromCodalmacen, $toCodalmacen): bool
     {
-        // find the stock
-        $fromStock = new Stock();
-        $where = [
-            new DataBaseWhere('codalmacen', $fromCodalmacen),
-            new DataBaseWhere('referencia', $this->referencia)
-        ];
-        if (empty($this->referencia) || false === $fromStock->loadFromCode('', $where)) {
-            // no need to transfer
-            return true;
-        }
-        $this->applyStockChanges($fromStock, $this->previousData['actualizastock'], $this->previousData['cantidad'] * -1, $this->previousData['servido'] * -1);
-        $fromStock->save();
+        return Inventory::run(self::$dataBase, function () use ($fromCodalmacen, $toCodalmacen): bool {
+            if ($fromCodalmacen === $toCodalmacen) {
+                return true;
+            }
+            if (empty($this->referencia) || $this->getProducto()->nostock || !empty($this->stockneutral)) {
+                return $this->pipeFalse('transfer', $fromCodalmacen, $toCodalmacen, $this->getDocument());
+            }
+            $fromStock = $this->stockForWarehouse($fromCodalmacen, $this->referencia, $this->idproducto);
+            $this->applyStockChanges($fromStock, $this->previousData['actualizastock'], $this->previousData['cantidad'] * -1, $this->previousData['servido'] * -1);
+            if (!$fromStock->save()) {
+                return false;
+            }
 
-        // find the new stock
-        $toStock = new Stock();
-        $where2 = [
-            new DataBaseWhere('codalmacen', $toCodalmacen),
-            new DataBaseWhere('referencia', $this->referencia)
-        ];
-        if (false === $toStock->loadFromCode('', $where2)) {
-            // stock not found, then create one
-            $toStock->codalmacen = $toCodalmacen;
-            $toStock->idproducto = $this->idproducto ?? $this->getProducto()->idproducto;
-            $toStock->referencia = $this->referencia;
-        }
+            $toStock = $this->stockForWarehouse(
+                $toCodalmacen,
+                $this->referencia,
+                $this->idproducto ?? $this->getProducto()->idproducto
+            );
 
-        $this->applyStockChanges($toStock, $this->actualizastock, $this->cantidad, $this->servido);
-        if ($toStock->save()) {
-            $this->pipe('transfer', $fromCodalmacen, $toCodalmacen, $this->getDocument());
-            return true;
-        }
+            $this->applyStockChanges($toStock, $this->actualizastock, $this->cantidad, $this->servido);
+            if ($toStock->save()) {
+                return $this->pipeFalse('transfer', $fromCodalmacen, $toCodalmacen, $this->getDocument());
+            }
 
-        return false;
+            return false;
+        }, $this, 'transfer');
     }
 
     /**
@@ -339,6 +420,14 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
 
         if ($this->servido < 0 && $this->cantidad >= 0) {
             $this->servido = 0.0;
+        }
+        if (
+            !is_finite((float)$this->cantidad) || !is_finite((float)$this->servido)
+            || ($this->cantidad >= 0 && $this->servido > $this->cantidad + 0.0005)
+            || ($this->cantidad < 0 && ($this->servido > 0 || $this->servido < $this->cantidad - 0.0005))
+        ) {
+            Tools::log()->warning('La cantidad servida debe estar dentro de la cantidad de la línea.');
+            return false;
         }
 
         $this->descripcion = Tools::noHtml($this->descripcion);
@@ -361,25 +450,15 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
      * @param float $quantity
      * @param float $served
      */
-    private function applyStockChanges(&$stock, int $mode, float $quantity, float $served)
+    private function applyStockChanges(Stock $stock, int $mode, float $quantity, float $served): void
     {
-        if ($quantity < 0 && $served < $quantity) {
-            $served = $quantity;
-        }
-
-        switch ($mode) {
-            case 1:
-            case -1:
-                $stock->cantidad += $mode * ($quantity - $served);
-                break;
-
-            case 2:
-                $stock->pterecibir += $quantity - $served;
-                break;
-
-            case -2:
-                $stock->reservada += $quantity - $served;
-                break;
+        $contribution = StockContribution::fromLine([
+            'actualizastock' => $mode,
+            'cantidad' => $quantity,
+            'servido' => $served,
+        ]);
+        foreach ($contribution as $field => $delta) {
+            $stock->{$field} += $delta;
         }
     }
 
@@ -397,6 +476,9 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
             case 'actualizastock':
             case 'cantidad':
             case 'servido':
+            case 'referencia':
+            case 'idproducto':
+            case 'stockneutral':
                 return $this->updateStock() && parent::onChange($field);
         }
 
@@ -409,7 +491,8 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
     protected function onDelete()
     {
         $this->cantidad = 0.0;
-        $this->updateStock();
+        $this->servido = 0.0;
+        Inventory::requireSuccess($this->updateStock());
         parent::onDelete();
     }
 
@@ -420,7 +503,7 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
 
     protected function setPreviousData(array $fields = [])
     {
-        $more = ['actualizastock', 'cantidad', 'servido'];
+        $more = ['actualizastock', 'cantidad', 'servido', 'referencia', 'idproducto', 'stockneutral', 'stockparent', $this->documentColumn()];
         parent::setPreviousData(array_merge($more, $fields));
 
         if (null === $this->previousData['actualizastock']) {
@@ -430,6 +513,21 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
         if (null === $this->previousData['cantidad']) {
             $this->previousData['cantidad'] = 0.0;
         }
+    }
+
+    private function stockForWarehouse(string $warehouse, string $reference, ?int $productId): Stock
+    {
+        $stock = new Stock();
+        $where = [
+            new DataBaseWhere('codalmacen', $warehouse),
+            new DataBaseWhere('referencia', $reference),
+        ];
+        if (!$stock->loadFromCode('', $where)) {
+            $stock->codalmacen = $warehouse;
+            $stock->referencia = $reference;
+            $stock->idproducto = $productId;
+        }
+        return $stock;
     }
 
     /**
@@ -445,48 +543,36 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
             return true;
         }
 
-        // find the variant
-        $variante = new Variante();
-        $where = [new DataBaseWhere('referencia', $this->referencia)];
-        if (empty($this->referencia) || false === $variante->loadFromCode('', $where)) {
-            return true;
-        }
-
-        // find the product
-        $producto = $variante->getProducto();
-        if ($producto->nostock) {
-            return true;
-        }
-
-        // find the stock
-        $stock = new Stock();
         $doc = $this->getDocument();
-        $where2 = [
-            new DataBaseWhere('codalmacen', $doc->codalmacen),
-            new DataBaseWhere('referencia', $this->referencia)
-        ];
-        if (false === $stock->loadFromCode('', $where2)) {
-            // stock not found, then create one
-            $stock->codalmacen = $doc->codalmacen;
-            $stock->idproducto = $this->idproducto ?? $this->getProducto()->idproducto;
-            $stock->referencia = $this->referencia;
+        $oldReference = $this->previousData['referencia'] ?? $this->referencia;
+        $references = array_unique(array_filter([$oldReference, $this->referencia]));
+        sort($references, SORT_STRING);
+        foreach ($references as $reference) {
+            $variant = new Variante();
+            if (!$variant->loadFromCode('', [new DataBaseWhere('referencia', $reference)])) {
+                return false;
+            }
+            $product = $variant->getProducto();
+            if ($product->nostock) {
+                continue;
+            }
+            $stock = $this->stockForWarehouse($doc->codalmacen, $reference, $variant->idproducto);
+            if ($reference === $oldReference && empty($this->previousData['stockneutral'])) {
+                $this->applyStockChanges(
+                    $stock,
+                    (int)$this->previousData['actualizastock'],
+                    -(float)$this->previousData['cantidad'],
+                    -(float)($this->previousData['servido'] ?? 0)
+                );
+            }
+            if ($reference === $this->referencia && empty($this->stockneutral)) {
+                $this->applyStockChanges($stock, (int)$this->actualizastock, $this->cantidad, $this->servido);
+            }
+            if (!$stock->save()) {
+                return false;
+            }
         }
-
-        $this->applyStockChanges($stock, $this->previousData['actualizastock'], $this->previousData['cantidad'] * -1, $this->previousData['servido'] * -1);
-        $this->applyStockChanges($stock, $this->actualizastock, $this->cantidad, $this->servido);
-
-        // enough stock?
-        if (false === $producto->ventasinstock && $this->actualizastock === -1 && $stock->cantidad < 0) {
-            Tools::log()->warning('not-enough-stock', ['%reference%' => $this->referencia]);
-            return false;
-        }
-
-        if ($stock->save()) {
-            $this->pipe('updateStock', $doc);
-            $this->disableUpdateStock = true;
-            return true;
-        }
-
-        return false;
+        $this->disableUpdateStock = true;
+        return $this->pipeFalse('updateStock', $doc);
     }
 }

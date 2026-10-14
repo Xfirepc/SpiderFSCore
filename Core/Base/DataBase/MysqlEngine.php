@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2013-2023 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -240,12 +241,14 @@ class MysqlEngine extends DataBaseEngine
      */
     public function exec($link, $sql)
     {
+        $this->lastErrorMsg = '';
         try {
             if ($link->multi_query($sql)) {
                 do {
                     $more = $link->more_results() && $link->next_result();
                 } while ($more);
             }
+
             return $link->errno === 0;
         } catch (Exception $err) {
             $this->lastErrorMsg = $err->getMessage();
@@ -324,6 +327,7 @@ class MysqlEngine extends DataBaseEngine
      */
     public function select($link, $sql)
     {
+        $this->lastErrorMsg = '';
         $result = [];
         try {
             $aux = $link->query($sql);
@@ -332,6 +336,7 @@ class MysqlEngine extends DataBaseEngine
                 while ($row = $aux->fetch_array(MYSQLI_ASSOC)) {
                     $result[] = $row;
                 }
+
                 $aux->free();
             }
         } catch (Exception $err) {
@@ -377,6 +382,7 @@ class MysqlEngine extends DataBaseEngine
                 array_splice($this->transactions, $count, 1);
                 break;
             }
+
             ++$count;
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of FacturaScripts
  * Copyright (C) 2017-2024 Carlos Garcia Gomez <carlos@facturascripts.com>
@@ -148,12 +149,14 @@ class DocumentStitcher extends Controller
     protected function addDocument($newDoc): bool
     {
         foreach ($this->documents as $doc) {
-            if ($doc->codalmacen != $newDoc->codalmacen ||
+            if (
+                $doc->codalmacen != $newDoc->codalmacen ||
                 $doc->coddivisa != $newDoc->coddivisa ||
                 $doc->idempresa != $newDoc->idempresa ||
                 $doc->dtopor1 != $newDoc->dtopor1 ||
                 $doc->dtopor2 != $newDoc->dtopor2 ||
-                $doc->subjectColumnValue() != $newDoc->subjectColumnValue()) {
+                $doc->subjectColumnValue() != $newDoc->subjectColumnValue()
+            ) {
                 Tools::log()->warning('incompatible-document', ['%code%' => $newDoc->codigo]);
                 return false;
             }
@@ -186,11 +189,15 @@ class DocumentStitcher extends Controller
      * @param array $quantities
      * @param int $idestado
      */
-    protected function breakDownLines(&$doc, &$docLines, &$newLines, &$quantities, $idestado): void
+    protected function breakDownLines(&$doc, &$docLines, &$newLines, &$quantities, $idestado): bool
     {
         $full = true;
         foreach ($docLines as $line) {
             $quantity = (float)$this->request->request->get('approve_quant_' . $line->primaryColumnValue(), '0');
+            if ($quantity < 0 || $quantity + $line->servido > $line->cantidad + 0.0005) {
+                Tools::log()->warning('La cantidad a servir excede la cantidad pendiente.');
+                return false;
+            }
             $quantities[$line->primaryColumnValue()] = $quantity;
 
             if (empty($quantity) && $line->cantidad) {
@@ -210,7 +217,7 @@ class DocumentStitcher extends Controller
             if (false === $doc->save()) {
                 $this->dataBase->rollback();
                 Tools::log()->error('record-save-error');
-                return;
+                return false;
             }
         }
 
@@ -220,9 +227,10 @@ class DocumentStitcher extends Controller
             if (false === $line->save()) {
                 $this->dataBase->rollback();
                 Tools::log()->error('record-save-error');
-                return;
+                return false;
             }
         }
+        return true;
     }
 
     protected function closeDocuments(int $idestado): void
@@ -272,7 +280,10 @@ class DocumentStitcher extends Controller
             }
 
             // we break down quantities and lines
-            $this->breakDownLines($doc, $lines, $newLines, $quantities, $idestado);
+            if (!$this->breakDownLines($doc, $lines, $newLines, $quantities, $idestado)) {
+                $this->dataBase->rollback();
+                return;
+            }
         }
 
         if (null === $prototype || empty($newLines)) {
