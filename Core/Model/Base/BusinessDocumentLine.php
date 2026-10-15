@@ -518,6 +518,26 @@ abstract class BusinessDocumentLine extends ModelOnChangeClass
     private function stockForWarehouse(string $warehouse, string $reference, ?int $productId): Stock
     {
         $stock = new Stock();
+        if (
+            Inventory::catalogRead('productos', $productId) !== null
+            && Inventory::catalogRead('variantes', $reference) !== null
+        ) {
+            // Both catalogue locks are already held. Read all matching raw rows
+            // to retain duplicate detection and driver types for save hooks.
+            $rows = self::$dataBase->select('SELECT * FROM stocks WHERE referencia = '
+                . self::$dataBase->var2str($reference) . ' AND codalmacen = '
+                . self::$dataBase->var2str($warehouse) . ' FOR UPDATE');
+            Inventory::requireSuccess(count($rows) <= 1, 'Hay saldos duplicados; requieren revisión manual.');
+            if ($rows) {
+                $stock->loadFromData($rows[0]);
+                Inventory::rememberStockRow($rows[0]);
+                return $stock;
+            }
+            $stock->codalmacen = $warehouse;
+            $stock->referencia = $reference;
+            $stock->idproducto = $productId;
+            return $stock;
+        }
         $where = [
             new DataBaseWhere('codalmacen', $warehouse),
             new DataBaseWhere('referencia', $reference),

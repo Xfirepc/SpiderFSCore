@@ -38,13 +38,18 @@ class InventoryOperation extends ModelClass
             . self::$dataBase->var2str(Tools::dateTime()) . ')';
         $sql .= Tools::config('db_type') === 'postgresql' ? ' ON CONFLICT (id) DO NOTHING'
             : ' ON DUPLICATE KEY UPDATE id = id';
-        if (!self::$dataBase->exec($sql)) {
-            return false;
+        if (self::$dataBase->supportsInsertReturning()) {
+            // MariaDB returns the actual inserted or conflicting row while the
+            // same write lock remains owned by this transaction.
+            $rows = self::$dataBase->execReturning($sql . ' RETURNING id, fingerprint, result, created');
+        } else {
+            if (!self::$dataBase->exec($sql)) {
+                return false;
+            }
+            $rows = self::$dataBase->select('SELECT * FROM inventory_operations WHERE id = '
+                . self::$dataBase->var2str($key) . ' FOR UPDATE');
         }
-
-        $rows = self::$dataBase->select('SELECT * FROM inventory_operations WHERE id = '
-            . self::$dataBase->var2str($key) . ' FOR UPDATE');
-        if (empty($rows) || !hash_equals($rows[0]['fingerprint'], $fingerprint)) {
+        if (empty($rows) || $rows[0]['id'] !== $key || !hash_equals($rows[0]['fingerprint'], $fingerprint)) {
             Tools::log()->warning('La operación ya se utilizó con otros datos. Recargue antes de continuar.');
             return false;
         }

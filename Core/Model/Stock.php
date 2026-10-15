@@ -245,9 +245,12 @@ class Stock extends ModelClass
                     'Use una transferencia para cambiar la identidad o el almacén de un saldo.'
                 );
             }
-            $rows = self::$dataBase->select('SELECT * FROM stocks WHERE referencia = '
-                . self::$dataBase->var2str($this->referencia) . ' AND codalmacen = '
-                . self::$dataBase->var2str($this->codalmacen) . ' FOR UPDATE');
+            $stockRead = Inventory::stockRow($this->referencia, $this->codalmacen);
+            $rows = $stockRead === null
+                ? self::$dataBase->select('SELECT * FROM stocks WHERE referencia = '
+                    . self::$dataBase->var2str($this->referencia) . ' AND codalmacen = '
+                    . self::$dataBase->var2str($this->codalmacen) . ' FOR UPDATE')
+                : [$stockRead];
             Inventory::requireSuccess(count($rows) <= 1, 'Hay saldos duplicados; requieren revisión manual.');
             $current = $rows[0] ?? [];
             Inventory::requireSuccess(

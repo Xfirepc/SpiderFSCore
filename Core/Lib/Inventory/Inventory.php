@@ -24,6 +24,7 @@ final class Inventory
     private static $preparingSchema = false;
     private static $catalogReads = [];
     private static $stockReads = [];
+    private static $stockRows = [];
     private static $operation;
     private static $failed = false;
     private static $finishing = false;
@@ -44,6 +45,7 @@ final class Inventory
         StockTotals::clear();
         self::$catalogReads = [];
         self::$stockReads = [];
+        self::$stockRows = [];
         self::$insertedSources = [];
         self::$snapshots = [];
         self::$afterCommit = [];
@@ -56,6 +58,7 @@ final class Inventory
         StockTotals::clear();
         self::$catalogReads = [];
         self::$stockReads = [];
+        self::$stockRows = [];
         self::$insertedSources = [];
         WorkQueue::transactionEnded($committed);
         if (!$committed) {
@@ -173,6 +176,19 @@ final class Inventory
     {
         self::$catalogReads = [];
         self::$stockReads = [];
+        self::$stockRows = [];
+    }
+
+    /** Only a complete, unambiguous row already read FOR UPDATE is reusable. */
+    public static function rememberStockRow(array $row): void
+    {
+        self::requireSuccess(self::active(), 'La reutilización requiere una operación de inventario activa.');
+        self::$stockRows[$row['codalmacen']][$row['referencia']] = $row;
+    }
+
+    public static function stockRow(string $reference, string $warehouse): ?array
+    {
+        return self::active() ? (self::$stockRows[$warehouse][$reference] ?? null) : null;
     }
 
     public static function rememberStockRead(array $row): void
@@ -224,6 +240,7 @@ final class Inventory
         StockTotals::clear();
         self::$catalogReads = [];
         self::$stockReads = [];
+        self::$stockRows = [];
         self::$insertedSources = [];
     }
 

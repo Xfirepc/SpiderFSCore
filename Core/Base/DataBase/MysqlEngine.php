@@ -280,6 +280,13 @@ class MysqlEngine extends DataBaseEngine
         return $link instanceof mysqli && $link->insert_id > 0 ? (string) $link->insert_id : null;
     }
 
+    public function supportsInsertReturning($link): bool
+    {
+        return $link instanceof mysqli
+            && preg_match('/(?:^|[- ])(\d+\.\d+\.\d+)-MariaDB(?:[- ]|$)/i', $link->server_info, $matches)
+            && version_compare($matches[1], '10.5.0', '>=');
+    }
+
     /**
      * Indicates if the connection has an active transaction.
      *

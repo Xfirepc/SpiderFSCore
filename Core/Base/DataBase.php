@@ -268,6 +268,20 @@ final class DataBase
         return $result;
     }
 
+    /** Execute DML with RETURNING inside a transaction owned by the caller. */
+    public function execReturning(string $sql): array
+    {
+        Inventory::requireSuccess($this->connected() && $this->inTransaction(), 'La escritura requiere una transacción.');
+        Inventory::forgetCatalogReads();
+        self::$tables = [];
+        return $this->select($sql);
+    }
+
+    public function supportsInsertReturning(): bool
+    {
+        return self::$engine instanceof MysqlEngine && self::$engine->supportsInsertReturning(self::$link);
+    }
+
     /**
      * Returns an array with the columns of a given table.
      *
