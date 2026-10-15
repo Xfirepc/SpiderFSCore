@@ -149,6 +149,13 @@ class MysqlEngine extends DataBaseEngine
             return true;
         } elseif (substr($dbType, 0, 6) == 'double' && $xmlType == 'double precision') {
             return true;
+        } elseif (
+            preg_match('/^(?:decimal|numeric)\(\s*(\d+)\s*,\s*(\d+)\s*\)$/i', trim($dbType), $actual)
+            && preg_match('/^(?:decimal|numeric)\(\s*(\d+)\s*,\s*(\d+)\s*\)$/i', trim($xmlType), $expected)
+        ) {
+            // MySQL reports NUMERIC as DECIMAL. Avoid rebuilding an unchanged
+            // column, but keep real precision/scale conversions mandatory.
+            return (int) $actual[1] === (int) $expected[1] && (int) $actual[2] === (int) $expected[2];
         } elseif (substr($dbType, 0, 8) == 'varchar(' && substr($xmlType, 0, 18) == 'character varying(') {
             // check length
             return substr($dbType, 8, -1) == substr($xmlType, 18, -1);
