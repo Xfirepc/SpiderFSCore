@@ -32,15 +32,21 @@ class InventoryPreparationTest extends TestCase
 
         $preparations = 0;
         $insideBeforePrepare = null;
-        Inventory::registerRecorder(static function (): bool { return true; },
+        Inventory::registerRecorder(
+            static function (): bool {
+                return true;
+            },
             static function () use ($db, &$preparations, &$insideBeforePrepare): void {
                 $preparations++;
                 $insideBeforePrepare = $db->inTransaction();
                 $db->exec('CREATE TABLE preparation_probe (id int)');
-            });
+            }
+        );
         $this->assertTrue($db->beginTransaction());
         $this->assertTrue($db->exec('INSERT INTO preparation_probe VALUES (1)'));
-        $this->assertFalse(Inventory::run($db, static function (): bool { return false; }));
+        $this->assertFalse(Inventory::run($db, static function (): bool {
+            return false;
+        }));
         $this->assertTrue($db->rollback());
         $this->assertSame([], $engine->rows);
         $this->assertFalse($insideBeforePrepare);
