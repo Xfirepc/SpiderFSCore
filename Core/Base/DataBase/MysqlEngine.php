@@ -274,6 +274,12 @@ class MysqlEngine extends DataBaseEngine
         return $this->utilsSQL;
     }
 
+    /** Native result of an INSERT that generated an AUTO_INCREMENT value. */
+    public function generatedId($link): ?string
+    {
+        return $link instanceof mysqli && $link->insert_id > 0 ? (string) $link->insert_id : null;
+    }
+
     /**
      * Indicates if the connection has an active transaction.
      *

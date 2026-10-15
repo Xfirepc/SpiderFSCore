@@ -510,7 +510,7 @@ abstract class ModelClass extends ModelCore
 
         $autoInserted = $this->primaryColumnValue() === null;
         if ($autoInserted) {
-            $this->{static::primaryColumn()} = self::$dataBase->lastval();
+            $this->{static::primaryColumn()} = self::$dataBase->generatedId();
         } else {
             self::$dataBase->updateSequence(static::tableName(), $this->getModelFields());
         }

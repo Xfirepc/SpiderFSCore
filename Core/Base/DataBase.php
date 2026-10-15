@@ -382,6 +382,24 @@ final class DataBase
     }
 
     /**
+     * Read an automatically generated key immediately after its INSERT.
+     * Explicit keys and general session LAST_INSERT_ID reads still use lastval().
+     *
+     * @return string|int|bool
+     */
+    public function generatedId()
+    {
+        if (self::$engine instanceof MysqlEngine) {
+            $value = self::$engine->generatedId(self::$link);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return $this->lastval();
+    }
+
+    /**
      * Undo the statements executed in the database.
      *
      * @return bool
