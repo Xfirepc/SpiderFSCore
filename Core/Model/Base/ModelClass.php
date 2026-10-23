@@ -28,7 +28,6 @@ use FacturaScripts\Core\Model\Stock;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Core\WorkQueue;
 use FacturaScripts\Dinamic\Model\CodeModel;
-use RuntimeException;
 
     /**
      * The class from which all models inherit, connects to the database,
@@ -54,7 +53,7 @@ abstract class ModelClass extends ModelCore
         }
     }
 
-    /** Reject a stale editor instead of repeating the old contribution. */
+    /** Conserva el bloqueo; la comparación optimista está suspendida temporalmente. */
     public function lockInventorySource(): void
     {
         if (empty($this->primaryColumnValue())) {
@@ -67,16 +66,13 @@ abstract class ModelClass extends ModelCore
         $current = clone $this;
         $current->loadFromData($rows[0]);
         $row = $current->toArray();
-        foreach ($this->inventoryLoaded as $field => $value) {
+        foreach (array_keys($this->inventoryLoaded) as $field) {
             if (
                 in_array(static::tableName(), ['productos', 'variantes'], true)
                 && in_array($field, ['stockfis', 'actualizado'], true)
             ) {
                 $this->{$field} = $row[$field];
                 continue;
-            }
-            if (array_key_exists($field, $row) && $row[$field] != $value) {
-                throw new RuntimeException('El documento cambió en otra operación. Recárguelo antes de guardar.');
             }
         }
     }
