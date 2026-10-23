@@ -130,6 +130,13 @@ final class Plugins
             $pluginDeploy->initControllers();
         }
 
+        // nginx del contenedor corre como usuario "nginx" y no puede servir
+        // /Dinamic/Assets si el directorio queda en 0700 (umask del proceso PHP)
+        $dinamicFolder = Tools::folder('Dinamic');
+        if (is_dir($dinamicFolder)) {
+            @chmod($dinamicFolder, 0755);
+        }
+
         // con opcache.validate_timestamps=Off en producción, el bytecode compilado
         // no se refresca solo tras un git pull + reconstruir; forzamos la limpieza
         if (function_exists('opcache_reset')) {
