@@ -23,6 +23,7 @@ namespace FacturaScripts\Core;
 use FacturaScripts\Core\Base\DataBase;
 use FacturaScripts\Core\Base\DataBase\DataBaseQueries;
 use FacturaScripts\Core\Base\PluginDeploy;
+use FacturaScripts\Core\Lib\Inventory\InventorySchemaMigration;
 
 /**
  * Actualiza la estructura de la base de datos.
@@ -276,8 +277,10 @@ final class DbUpdater
             return '';
         }
 
-        // if you have to delete a constraint, it is better to delete them all
-        $deleteCons = false;
+        $xmlCons = InventorySchemaMigration::physicalConstraints($tableName, $xmlCons, $dbCons);
+        // Conservar las restricciones que siguen vigentes. Eliminar todas por
+        // una sola obsoleta también retiraba índices y relaciones que no se
+        // volvían a añadir, porque ya estaban presentes en la comparación.
         $sqlDelete = '';
         $sqlDeleteFK = '';
 
@@ -285,16 +288,16 @@ final class DbUpdater
             if ($dbCon['type'] === 'PRIMARY KEY') {
                 // exclude primary key
                 continue;
-            } elseif ($dbCon['type'] === 'FOREIGN KEY') {
+            }
+            $column = self::searchInArray($xmlCons, 'name', $dbCon['name']);
+            if (!empty($column)) {
+                continue;
+            }
+            if ($dbCon['type'] === 'FOREIGN KEY') {
                 // it is better to delete the foreign keys before the rest
                 $sqlDeleteFK .= self::sqlTool()->sqlDropConstraint($tableName, $dbCon);
             } else {
                 $sqlDelete .= self::sqlTool()->sqlDropConstraint($tableName, $dbCon);
-            }
-
-            $column = self::searchInArray($xmlCons, 'name', $dbCon['name']);
-            if (empty($column)) {
-                $deleteCons = true;
             }
         }
 
@@ -312,9 +315,7 @@ final class DbUpdater
             }
         }
 
-        return $deleteCons ?
-            $sqlDeleteFK . $sqlDelete . $sql :
-            $sql;
+        return $sqlDeleteFK . $sqlDelete . $sql;
     }
 
     private static function compareDataTypes(string $dbType, string $xmlType): bool

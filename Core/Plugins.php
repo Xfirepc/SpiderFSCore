@@ -22,6 +22,8 @@ namespace FacturaScripts\Core;
 use DirectoryIterator;
 use FacturaScripts\Core\Base\PluginDeploy;
 use FacturaScripts\Core\Internal\Plugin;
+use FacturaScripts\Core\Lib\PluginRebuildLock;
+use RuntimeException;
 use ZipArchive;
 
 /**
@@ -112,35 +114,43 @@ final class Plugins
 
     public static function deploy(bool $clean = true, bool $initControllers = false): void
     {
-        $pluginDeploy = new PluginDeploy();
-        $pluginDeploy->deploy(
-            self::folder() . DIRECTORY_SEPARATOR,
-            self::enabled(),
-            $clean
-        );
-
-        Kernel::rebuildRoutes();
-        Kernel::saveRoutes();
-
-        DbUpdater::rebuild();
-
-        Tools::folderDelete(Tools::folder('MyFiles', 'Cache'));
-
-        if ($initControllers) {
-            $pluginDeploy->initControllers();
+        $lock = new PluginRebuildLock();
+        if (!$lock->acquire()) {
+            throw new RuntimeException('Hay otra reconstrucción de plugins en curso. Reintente cuando termine.');
         }
+        try {
+            $pluginDeploy = new PluginDeploy();
+            $pluginDeploy->deploy(
+                self::folder() . DIRECTORY_SEPARATOR,
+                self::enabled(),
+                $clean
+            );
 
-        // nginx del contenedor corre como usuario "nginx" y no puede servir
-        // /Dinamic/Assets si el directorio queda en 0700 (umask del proceso PHP)
-        $dinamicFolder = Tools::folder('Dinamic');
-        if (is_dir($dinamicFolder)) {
-            @chmod($dinamicFolder, 0755);
-        }
+            Kernel::rebuildRoutes();
+            Kernel::saveRoutes();
 
-        // con opcache.validate_timestamps=Off en producción, el bytecode compilado
-        // no se refresca solo tras un git pull + reconstruir; forzamos la limpieza
-        if (function_exists('opcache_reset')) {
-            opcache_reset();
+            DbUpdater::rebuild();
+
+            Tools::folderDelete(Tools::folder('MyFiles', 'Cache'));
+
+            if ($initControllers) {
+                $pluginDeploy->initControllers();
+            }
+
+            // nginx del contenedor corre como usuario "nginx" y no puede servir
+            // /Dinamic/Assets si el directorio queda en 0700 (umask del proceso PHP)
+            $dinamicFolder = Tools::folder('Dinamic');
+            if (is_dir($dinamicFolder)) {
+                @chmod($dinamicFolder, 0755);
+            }
+
+            // con opcache.validate_timestamps=Off en producción, el bytecode compilado
+            // no se refresca solo tras un git pull + reconstruir; forzamos la limpieza
+            if (function_exists('opcache_reset')) {
+                opcache_reset();
+            }
+        } finally {
+            $lock->release();
         }
     }
 

@@ -19,11 +19,15 @@
 
 namespace FacturaScripts\Core\Controller;
 
+use FacturaScripts\Core\Base\DataBase;
 use FacturaScripts\Core\Cache;
 use FacturaScripts\Core\Contract\ControllerInterface;
 use FacturaScripts\Core\CrashReport;
+use FacturaScripts\Core\Lib\Inventory\InventorySchemaMigration;
+use FacturaScripts\Core\Lib\PluginRebuildLock;
 use FacturaScripts\Core\Plugins;
 use FacturaScripts\Core\Tools;
+use RuntimeException;
 
 class Deploy implements ControllerInterface
 {
@@ -136,6 +140,29 @@ class Deploy implements ControllerInterface
             echo json_encode(['status' => 'error', 'message' => 'Invalid or expired token']);
             return;
         }
+        $expectedDatabase = $_GET['database'] ?? FS_DB_NAME;
+        if (!is_string($expectedDatabase) || !hash_equals(FS_DB_NAME, $expectedDatabase)) {
+            http_response_code(409);
+            echo json_encode(['status' => 'error', 'message' => 'La instancia ya no coincide con el trabajo solicitado.']);
+            return;
+        }
+
+        // Un reintento del mismo trabajo recupera su resultado confirmado.
+        $resultKey = 'mass-rebuild-result-' . $token . '-' . FS_DB_NAME;
+        $cached = Cache::get($resultKey, '');
+        if (is_array($cached)) {
+            echo json_encode($cached);
+            return;
+        }
+
+        $lock = new PluginRebuildLock();
+        if (!$lock->acquire()) {
+            http_response_code(409);
+            echo json_encode(['status' => 'error', 'message' => 'Hay otra reconstrucción de plugins en curso.']);
+            return;
+        }
+        // También cubre el cierre normal del kernel y las desconexiones del cliente.
+        register_shutdown_function([$lock, 'release']);
 
         $start = microtime(true);
         $error = null;
@@ -144,6 +171,7 @@ class Deploy implements ControllerInterface
         ob_start();
         $modelsInstantiated = 0;
         $modelsFailed = [];
+        $schemaChanges = [];
         try {
             // (true, true) = clean Dinamic + initControllers. initControllers
             // instancia controladores (lo que dispara la creacion de SUS tablas
@@ -163,6 +191,19 @@ class Deploy implements ControllerInterface
             // a recordar el patron.
             list($modelsInstantiated, $modelsFailed) = self::ensureAllModelTables();
 
+            if ($modelsFailed) {
+                throw new RuntimeException('No se pudieron preparar ' . count($modelsFailed) . ' modelos.');
+            }
+            $tables = [];
+            if (Plugins::isEnabled('StockAvanzado')) {
+                $tables[] = 'stocks_movimientos';
+            }
+            if (Plugins::isEnabled('SpiderTraceability')) {
+                $tables[] = 'productos_lotes';
+            }
+            $migration = new InventorySchemaMigration(new DataBase());
+            $schemaChanges = $migration->upgrade($tables)['changed_tables'];
+
             // OJO: NO llamar Cache::clear() despues. Cache::clear() borra todos
             // los .cache en MyFiles/Tmp/FileCache, incluyendo el token global del
             // rebuild masivo, y los siguientes tenants devolverian
@@ -173,15 +214,18 @@ class Deploy implements ControllerInterface
         $deployOutput = ob_get_clean();
         $elapsed = (int) ((microtime(true) - $start) * 1000);
 
-        echo json_encode([
+        $result = [
             'status' => $error ? 'error' : 'ok',
             'db' => defined('FS_DB_NAME') ? FS_DB_NAME : null,
             'elapsed_ms' => $elapsed,
             'message' => $error,
             'models_ok' => $modelsInstantiated,
             'models_failed' => $modelsFailed,
+            'schema_changes' => $schemaChanges,
             'output_excerpt' => $deployOutput ? mb_substr(strip_tags($deployOutput), 0, 500) : null,
-        ]);
+        ];
+        Cache::set($resultKey, $result, '');
+        echo json_encode($result);
     }
 
     /**
