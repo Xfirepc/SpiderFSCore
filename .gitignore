@@ -4,8 +4,7 @@
 /doc/
 /MyFiles/
 /node_modules/
-/Plugins/*
-!/Plugins/SpiderDashboard/
+/Plugins/
 /vendor/
 .DS_Store
 .htaccess
