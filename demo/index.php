@@ -121,7 +121,7 @@ header(
                     Contraseña
                     <input name="password" id="password" type="password" minlength="12" maxlength="72"
                            autocomplete="new-password" required>
-                    <small>Entre 12 y 72 caracteres.</small>
+                    <small>Al menos 12 caracteres y hasta 72 bytes; las letras acentuadas y los símbolos pueden ocupar varios bytes.</small>
                 </label>
                 <label>
                     Repite la contraseña

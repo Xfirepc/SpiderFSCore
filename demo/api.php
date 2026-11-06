@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoPortalConfig;
+
+require_once __DIR__ . '/../Plugins/SpiderBuilder/Lib/DemoPortalConfig.php';
+
 session_set_cookie_params([
     'httponly' => true,
     'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
@@ -126,14 +130,11 @@ function masterApiConfig(): array
     }
 
     $contents = (string)file_get_contents(__DIR__ . '/../config.php');
-    $config = [];
-    foreach (['database' => 'FS_DB_NAME', 'api_key' => 'FS_API_KEY'] as $key => $constant) {
-        $pattern = '~define\(\s*([\'\"])' . preg_quote($constant, '~')
-            . '\1\s*,\s*([\'\"])(.*?)\2\s*\)\s*;~s';
-        if (!preg_match($pattern, $contents, $matches) || trim($matches[3]) === '') {
-            respond(['error' => 'La instancia master no está configurada'], 503);
-        }
-        $config[$key] = stripcslashes($matches[3]);
+    try {
+        $config = DemoPortalConfig::fromContents($contents);
+    } catch (RuntimeException $exception) {
+        error_log('[demo-portal] ' . $exception->getMessage());
+        respond(['error' => 'El portal de pruebas no está disponible en este momento.'], 503);
     }
 
     return $config;

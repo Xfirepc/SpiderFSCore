@@ -14,12 +14,12 @@ estas credenciales llega al navegador.
 https://HOST-FACTURASCRIPTS/api/3
 ```
 
-Todas las peticiones directas al API envían la base de datos master y la clave
-general configurada en FacturaScripts:
+Todas las peticiones directas al API envían la base de datos master y una clave
+habilitada de FacturaScripts:
 
 ```http
 X-RUC: base_de_datos_master
-X-Auth-Token: CLAVE_FS_API_KEY
+X-Auth-Token: CLAVE_API_AUTORIZADA
 Accept: application/json
 ```
 
@@ -30,9 +30,17 @@ Content-Type: application/json
 ```
 
 El RUC de la empresa que se registra se envía en el cuerpo JSON; no debe usarse
-como valor de `X-RUC` en este flujo. La clave tiene los permisos generales de
-`FS_API_KEY`, por lo que el proxy debe impedir que clientes públicos accedan
-directamente a `/api/3`. El navegador llama únicamente a `/demo/api.php`.
+como valor de `X-RUC` en este flujo. El portal BFF usa internamente una clave
+limitada configurada en `FS_DEMO_API_KEY`. El proxy debe impedir que clientes públicos
+accedan directamente a `/api/3`; el navegador llama a `/demo/api.php`.
+
+Para un agente o integración externa, crear una clave exclusiva con
+`fullaccess=false`: GET en `demoLicenses` y GET/POST en `demoRequests`.
+`demoRequests` comparte registro, estado y reenvío, pero rechaza `activate`.
+Reservar GET/POST de `demoRegistrations` a otra clave limitada, usada por el
+portal. Todos los demás recursos, PUT, PATCH y DELETE quedan deshabilitados.
+La [guía de Hermes](../Plugins/SpiderBuilder/Doc/Hermes.md) justifica la matriz
+completa, la pertenencia por contacto y la idempotencia.
 
 ## Configuración requerida
 
@@ -46,11 +54,24 @@ La instancia master debe definir en `config.php`:
 
 ```php
 define('FS_DB_NAME', 'base_de_datos_master');
-define('FS_API_KEY', 'clave-api-vigente');
+define('FS_DEMO_API_KEY', 'token-exclusivo-del-portal-demo');
 ```
 
-`FS_API_KEY` autentica exclusivamente las llamadas internas del BFF a la API de
-FacturaScripts. La consulta al SRI utiliza la credencial del proveedor
+Habilitar la API desde `/EditSettings` (`default.enable_api=true`) y crear la
+clave del portal con GET en `demoLicenses` y GET/POST en `demoRegistrations`,
+sin acceso total ni otros recursos. `FS_DEMO_API_KEY` autentica las llamadas
+internas del BFF; debe ser distinta de la clave Hermes y de `FS_API_KEY`, si
+esta última existe para otros usos. El portal responde 503 cuando falta la
+constante o contiene la clave general: no utiliza una credencial administrativa
+como alternativa. Configurar esa constante antes de desplegar el portal nuevo.
+
+Crear una instancia no requiere conceder CRUD sobre los modelos de
+instalaciones, licencias, clientes, usuarios o claves. La operación de dominio
+del servidor realiza el aprovisionamiento con sus propios permisos. Las claves
+HTTP limitan las operaciones que puede solicitar el consumidor; los roles de
+la licencia limitan después lo que puede hacer el cliente dentro del tenant.
+
+La consulta al SRI utiliza la credencial del proveedor
 encapsulada en `FiscalNum`; no se configura en Settings, Docker, el master ni
 los tenants. Las URLs se generan automáticamente desde `default.site_url`:
 
@@ -65,7 +86,21 @@ en el proxy; el portal mantiene además CSRF, idempotencia y un límite local
 básico.
 
 También deben estar configurados el correo saliente, los datos MySQL usados por
-SpiderBuilder y el schema base `MyFiles/SpiderBuilder/main_db.sql`.
+SpiderBuilder y el schema base `MyFiles/SpiderBuilder/main_db.sql`. El catálogo
+host debe contener USD y valores utilizables para almacén, forma de pago y
+serie. `default.codimpuesto` debe apuntar a un impuesto existente y activo;
+el aprovisionamiento no elige automáticamente una tasa distinta.
+
+En la base nueva se guardan los valores operativos predeterminados, USD con tasa
+1 y la asociación del almacén y la forma de pago seleccionados a la empresa
+creada. No se copian las credenciales de correo ni API del host. La contabilidad
+empieza desactivada mediante `facturacione.allow_accounting=false`. El usuario
+cliente tiene `admin=false` y `sysadmin=false`, de modo que sus permisos de
+edición, borrado, importación, exportación y propietario dependen de los roles
+de la licencia. El usuario técnico `admin` queda separado.
+
+La configuración PHP del tenant utiliza el host y puerto de MySQL del master
+y el usuario y contraseña de aprovisionamiento configurados en SpiderBuilder.
 
 El recurso debe ejecutarse en la base master. Si `X-RUC` selecciona una base
 tenant, el recurso responde `403`; una cookie `ruc` también se rechaza.
@@ -75,10 +110,19 @@ tenant, el recurso responde `403`; una cookie `ruc` también se rechaza.
 | Método | Ruta | Descripción |
 | --- | --- | --- |
 | `GET` | `/demoLicenses` | Lista licencias DEMO activas. |
+| `POST` | `/demoRequests` | Registra la solicitud desde un agente. |
+| `GET` | `/demoRequests/{public_id}` | Consulta el estado desde un agente. |
+| `POST` | `/demoRequests/{public_id}/resend` | Reenvía el correo desde un agente. |
 | `POST` | `/demoRegistrations` | Valida RUC y envía el enlace de activación. |
 | `POST` | `/demoRegistrations/activate` | Verifica el token y crea el tenant. |
 | `GET` | `/demoRegistrations/{public_id}` | Consulta el estado seguro. |
 | `POST` | `/demoRegistrations/{public_id}/resend` | Rota y reenvía el enlace. |
+
+Los cuerpos y respuestas de registro, estado y reenvío son iguales en ambos
+recursos. Los ejemplos siguientes usan `demoRegistrations` para el flujo del
+portal; el agente utiliza `demoRequests` con su propia clave. La ruta
+`POST /demoRequests/activate` responde 405 aunque el cuerpo contenga un token
+válido. El permiso del agente tampoco autoriza `demoRegistrations`.
 
 Las respuestas normales usan este sobre:
 
@@ -322,7 +366,7 @@ Cuerpo:
 | --- | --- | --- |
 | `token` | Sí | Token URL-safe recibido por correo. |
 | `username` | No | De 3 a 50 caracteres: letras, números, `_`, `@`, `+`, `.`, `-`. No puede ser `admin`. |
-| `password` | Sí | Entre 12 y 72 caracteres. |
+| `password` | Sí | Al menos 12 caracteres, máximo 72 bytes UTF-8 y ningún byte nulo. |
 
 Si `username` se omite se usa la sugerencia del registro. La contraseña no se
 guarda en texto claro ni se envía por correo.
@@ -349,9 +393,16 @@ Respuesta `200`:
 }
 ```
 
-Mientras el token siga vigente, la misma activación completada y repetida con
-la misma clave devuelve el resultado existente. El token con otra clave
-devuelve `409`.
+Una activación completada, repetida con el mismo token, usuario, contraseña y
+clave, devuelve el resultado existente incluso si el enlace ya caducó o la
+licencia cambió después del alta. No vuelve a desplegar ni extiende la prueba.
+El token con otra clave o credenciales devuelve `409`. Una activación pendiente
+o fallida sigue sujeta a la caducidad del enlace y a la firma de la licencia.
+
+Las mutaciones se serializan por RUC y las altas también por clave de
+idempotencia. Una petición simultánea que pierde el bloqueo devuelve `409` sin
+marcar fallida la activación en curso. El estado puede consultarse mientras se
+aprovisiona y sus fechas mantienen el formato `YYYY-MM-DD HH:mm:ss`.
 
 ## Flujo recomendado del backend/BFF
 
@@ -383,6 +434,27 @@ El BFF incluido expone al navegador `/demo/api.php?action=licenses`,
 `register`, `status`, `resend` y `activate`. Además aplica CSRF y un límite
 predeterminado de 5 registros por IP y hora; el proxy debe completar la
 protección y limitación de tráfico.
+
+## Pruebas del aprovisionamiento
+
+Desde `html/`:
+
+```bash
+vendor/bin/phpunit --no-configuration --do-not-cache-result \
+  --bootstrap vendor/autoload.php Test/Plugins/SpiderBuilder/DemoProvisioningTest.php
+bash Plugins/SpiderBuilder/Test/run-demo-integration.sh
+```
+
+La integración usa PHP y MySQL/MariaDB en contenedores desechables sin acceso
+a redes externas. No carga `config.php`, no reconstruye `Dinamic` del workspace
+ni conecta a bases de las instancias. SRI y correo se sustituyen por dobles.
+Comprueba el alta real de tenants, configuración USD, roles, reintentos,
+recuperación parcial, concurrencia entre procesos y vencimiento. También
+ejecuta la autenticación y el control de permisos reales del Core con claves
+sin acceso total: verifica los accesos mínimos, la activación reservada al
+portal, la denegación de recursos genéricos y la revocación. Las imágenes
+de prueba se pueden seleccionar con `SB_DEMO_TEST_PHP_IMAGE` y
+`SB_DEMO_TEST_MYSQL_IMAGE`.
 
 ## Errores habituales
 

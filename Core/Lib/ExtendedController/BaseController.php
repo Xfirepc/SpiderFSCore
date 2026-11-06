@@ -22,6 +22,7 @@ namespace FacturaScripts\Core\Lib\ExtendedController;
 use Exception;
 use FacturaScripts\Core\Base\Controller;
 use FacturaScripts\Core\Base\ControllerPermissions;
+use FacturaScripts\Core\Base\TenantBusinessPolicy;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Lib\Widget\VisualItem;
 use FacturaScripts\Core\Model\Base\ModelClass;
@@ -214,6 +215,7 @@ abstract class BaseController extends Controller
         // Create the views to display
         $this->createViews();
         $this->pipe('createViews');
+        TenantBusinessPolicy::filter($this, $user, $this->request);
     }
 
     public function setCurrentView(string $viewName): void

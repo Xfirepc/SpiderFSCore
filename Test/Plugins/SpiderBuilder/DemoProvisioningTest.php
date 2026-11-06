@@ -7,6 +7,7 @@ use FacturaScripts\Plugins\SpiderBuilder\Lib\API\DemoProvisioning;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoApiException;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoHostGuard;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoIdentity;
+use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoPortalConfig;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoRegistrationService;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\MenuAccessSync;
 use FacturaScripts\Plugins\SpiderBuilder\Lib\TenantProvisioner;
@@ -74,7 +75,7 @@ class DemoProvisioningTest extends TestCase
         $api = new DemoProvisioning(new Response(), Request::create('/api/3', 'GET'), []);
 
         $this->assertSame(
-            ['demoLicenses', 'demoRegistrations'],
+            ['demoLicenses', 'demoRequests', 'demoRegistrations'],
             array_keys($api->getResources())
         );
     }
@@ -88,6 +89,39 @@ class DemoProvisioningTest extends TestCase
         } catch (DemoApiException $exception) {
             $this->assertSame(403, $exception->httpStatus());
         }
+    }
+
+    public function testPortalUsesOnlyItsDedicatedKey(): void
+    {
+        $configuration = "<?php\ndefine('FS_DB_NAME', 'master_test');\n"
+            . "define('FS_API_KEY', 'general-test-key');\n"
+            . "define('FS_DEMO_API_KEY', 'portal-test-key');\n";
+        $this->assertSame(['database' => 'master_test', 'api_key' => 'portal-test-key'], DemoPortalConfig::fromContents($configuration));
+    }
+
+    public function testPortalRejectsMissingDedicatedKeyInsteadOfUsingGeneralKey(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        DemoPortalConfig::fromContents("<?php define('FS_DB_NAME', 'master_test'); define('FS_API_KEY', 'general-test-key');");
+    }
+
+    public function testPortalRejectsGeneralKeyReusedAsDedicatedKey(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        DemoPortalConfig::fromContents("<?php define('FS_DB_NAME', 'master_test'); define('FS_API_KEY', 'same-key'); define('FS_DEMO_API_KEY', 'same-key');");
+    }
+
+    public function testPortalPreservesLiteralEscapesAndRejectsHeaderInjection(): void
+    {
+        $contents = <<<'PHP'
+<?php
+define('FS_DB_NAME', 'master_test');
+define('FS_DEMO_API_KEY', 'portal\\key\'test');
+PHP;
+        $config = DemoPortalConfig::fromContents($contents);
+        $this->assertSame("portal\\key'test", $config['api_key']);
+        $this->expectException(\RuntimeException::class);
+        DemoPortalConfig::fromContents('<?php define("FS_DB_NAME", "master_test"); define("FS_DEMO_API_KEY", "portal\r\nkey");');
     }
 
     public function testApiReturnsSafeForbiddenResponseForTenantCookie(): void
