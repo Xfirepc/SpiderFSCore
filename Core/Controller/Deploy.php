@@ -24,6 +24,7 @@ use FacturaScripts\Core\Cache;
 use FacturaScripts\Core\Contract\ControllerInterface;
 use FacturaScripts\Core\CrashReport;
 use FacturaScripts\Core\Lib\Inventory\InventorySchemaMigration;
+use FacturaScripts\Core\Lib\ModelSchemaPreparation;
 use FacturaScripts\Core\Lib\PluginRebuildLock;
 use FacturaScripts\Core\Plugins;
 use FacturaScripts\Core\Tools;
@@ -241,39 +242,6 @@ class Deploy implements ControllerInterface
      */
     private static function ensureAllModelTables(): array
     {
-        $modelDir = FS_FOLDER . '/Dinamic/Model';
-        if (!is_dir($modelDir)) {
-            return [0, []];
-        }
-
-        $ok = 0;
-        $failed = [];
-        $files = scandir($modelDir);
-        foreach ($files as $file) {
-            if (substr($file, -4) !== '.php') {
-                continue;
-            }
-            $modelName = substr($file, 0, -4);
-            $className = '\\FacturaScripts\\Dinamic\\Model\\' . $modelName;
-
-            if (!class_exists($className)) {
-                continue;
-            }
-            try {
-                $reflection = new \ReflectionClass($className);
-                if ($reflection->isAbstract() || $reflection->isInterface()) {
-                    continue;
-                }
-                $ctor = $reflection->getConstructor();
-                if ($ctor && $ctor->getNumberOfRequiredParameters() > 0) {
-                    continue;
-                }
-                new $className();
-                $ok++;
-            } catch (\Throwable $e) {
-                $failed[] = $modelName . ': ' . mb_substr($e->getMessage(), 0, 120);
-            }
-        }
-        return [$ok, $failed];
+        return (new ModelSchemaPreparation())->prepare();
     }
 }
