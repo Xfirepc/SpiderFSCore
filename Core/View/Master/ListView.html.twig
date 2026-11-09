@@ -175,7 +175,14 @@
                     </tr>
                 {% else %}
                     <tr class="table-warning">
-                        <td colspan="{{ 1 + currentView.getColumns() | length }}">{{ trans('no-data') }}</td>
+                        <td colspan="{{ 1 + currentView.getColumns() | length }}">
+                            {{ trans('no-data') }}
+                            {% if settings('main_system', 'onboarding_completed_at') %}
+                                {% set starts = {'ListProducto': ['Crea tu primer producto y registra sus existencias para empezar a vender.', 'EditProducto'], 'ListSocioGym': ['Añade tu primer socio y elige su plan.', 'EditSocioGym'], 'ListPlanGym': ['Crea tu primer plan con la duración y el precio de tu gimnasio.', 'EditPlanGym'], 'ListServicioAT': ['Recibe tu primer equipo para crear una orden de servicio.', 'NewServicioAT']} %}
+                                {% set start = starts[currentView.getViewName()]|default(null) %}
+                                {% if start %}<p class="mt-2 mb-1">{{ start[0] }}</p>{% if fsc.user.can(start[1], 'update') %}<a href="{{ asset(start[1]) }}" class="btn btn-sm btn-primary">Empezar</a>{% endif %}{% endif %}
+                            {% endif %}
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>

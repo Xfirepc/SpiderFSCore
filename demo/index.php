@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 session_set_cookie_params([
+    'path' => '/',
     'httponly' => true,
     'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
     'samesite' => 'Lax',
@@ -10,6 +11,7 @@ session_start();
 if (empty($_SESSION['demo_csrf'])) {
     $_SESSION['demo_csrf'] = bin2hex(random_bytes(24));
 }
+session_write_close();
 
 $token = trim((string)($_GET['token'] ?? ''));
 $registration = trim((string)($_GET['registration'] ?? ''));

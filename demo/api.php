@@ -6,6 +6,7 @@ use FacturaScripts\Plugins\SpiderBuilder\Lib\DemoPortalConfig;
 require_once __DIR__ . '/../Plugins/SpiderBuilder/Lib/DemoPortalConfig.php';
 
 session_set_cookie_params([
+    'path' => '/',
     'httponly' => true,
     'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
     'samesite' => 'Lax',
@@ -42,7 +43,7 @@ function clientIp(): string
 
 function enforceCsrf(): void
 {
-    $received = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    $received = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf'] ?? '');
     $expected = (string)($_SESSION['demo_csrf'] ?? '');
     if ($expected === '' || $received === '' || !hash_equals($expected, $received)) {
         respond(['error' => 'La sesión del formulario caducó. Recarga la página.'], 403);
@@ -83,8 +84,12 @@ function enforceIpRate(string $ip): void
 
 function hostRequest(string $method, string $path, array $data = [], string $idempotency = ''): void
 {
-    $baseUrl = demoApiUrl();
     $master = masterApiConfig();
+    // La API usa el origen privado configurado, nunca un Host enviado por el cliente.
+    $baseUrl = $master['api_url'];
+    // Las consultas de progreso y la activación pueden compartir sesión.
+    // No retener su bloqueo mientras otra petición prepara la base de datos.
+    session_write_close();
 
     $headers = [
         'Accept: application/json',
@@ -119,6 +124,14 @@ function hostRequest(string $method, string $path, array $data = [], string $ide
     if (!is_array($decoded)) {
         respond(['error' => 'El servicio devolvió una respuesta no válida'], 502);
     }
+    if ($status >= 200 && $status < 300 && isset($decoded['data']['entry_token'])) {
+        session_start();
+        session_regenerate_id(true);
+        $_SESSION['demo_entry_token'] = $decoded['data']['entry_token'];
+        unset($decoded['data']['entry_token']);
+        $decoded['data']['continue_url'] = './api.php?action=enter';
+        session_write_close();
+    }
     respond($decoded, $status > 0 ? $status : 502);
 }
 
@@ -132,32 +145,13 @@ function masterApiConfig(): array
     $contents = (string)file_get_contents(__DIR__ . '/../config.php');
     try {
         $config = DemoPortalConfig::fromContents($contents);
+        $config['api_url'] = DemoPortalConfig::internalApiUrl($contents);
     } catch (RuntimeException $exception) {
         error_log('[demo-portal] ' . $exception->getMessage());
         respond(['error' => 'El portal de pruebas no está disponible en este momento.'], 503);
     }
 
     return $config;
-}
-
-function demoApiUrl(): string
-{
-    $scheme = 'http';
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        $scheme = 'https';
-    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
-        $forwarded = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'])[0]));
-        if ($forwarded === 'https') {
-            $scheme = 'https';
-        }
-    }
-
-    $host = trim((string)($_SERVER['SERVER_NAME'] ?? ''));
-    if ($host === '') {
-        $host = trim((string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
-    }
-
-    return $scheme . '://' . $host . '/api/3';
 }
 
 $action = (string)($_GET['action'] ?? '');
@@ -169,6 +163,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(['error' => 'Método no permitido'], 405);
 }
 enforceCsrf();
+if ($action === 'enter') {
+    $token = (string)($_SESSION['demo_entry_token'] ?? '');
+    unset($_SESSION['demo_entry_token']);
+    session_write_close();
+    if ($token === '') {
+        respond(['error' => 'El acceso inicial ya fue utilizado. Inicia sesión normalmente.'], 403);
+    }
+    header('Content-Type: text/html; charset=utf-8');
+    header("Content-Security-Policy: default-src 'none'; script-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+    echo '<!doctype html><html lang="es"><meta charset="utf-8"><title>Entrando a SpiderCode</title><body><p>Estamos abriendo tu espacio…</p><form id="demo-entry" method="post" action="/login?action=demo-entry"><input type="hidden" name="entry_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '"><button type="submit">Continuar</button></form><script src="./enter.js" defer></script></body></html>';
+    exit;
+}
 $data = input();
 $idempotency = (string)($_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? '');
 
@@ -181,6 +187,10 @@ switch ($action) {
         break;
 
     case 'activate':
+        if (empty($_SESSION['demo_entry_binding'])) {
+            $_SESSION['demo_entry_binding'] = hash('sha256', random_bytes(32));
+        }
+        $data['entry_binding'] = $_SESSION['demo_entry_binding'];
         hostRequest('POST', 'demoRegistrations/activate', $data, $idempotency);
         break;
 

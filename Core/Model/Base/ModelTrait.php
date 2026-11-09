@@ -50,6 +50,14 @@ trait ModelTrait
         return static::$fields;
     }
 
+    /** Descarta los metadatos anteriores cuando se acaba de reconstruir el esquema. */
+    public static function resetModelFields(): void
+    {
+        static::$fields = [];
+        $name = explode('\\', static::class);
+        Cache::delete('model-fields-' . end($name));
+    }
+
     /**
      * Returns the name of the class of the model.
      *

@@ -55,6 +55,7 @@ La instancia master debe definir en `config.php`:
 ```php
 define('FS_DB_NAME', 'base_de_datos_master');
 define('FS_DEMO_API_KEY', 'token-exclusivo-del-portal-demo');
+define('FS_INTERNAL_URI', 'http://main_spidercode_nginx');
 ```
 
 Habilitar la API desde `/EditSettings` (`default.enable_api=true`) y crear la
@@ -64,6 +65,8 @@ internas del BFF; debe ser distinta de la clave Hermes y de `FS_API_KEY`, si
 esta última existe para otros usos. El portal responde 503 cuando falta la
 constante o contiene la clave general: no utiliza una credencial administrativa
 como alternativa. Configurar esa constante antes de desplegar el portal nuevo.
+`FS_INTERNAL_URI` determina el origen privado de `/api/3`; no se obtiene de las
+cabeceras del navegador y puede incluir el puerto o path interno de la aplicación.
 
 Crear una instancia no requiere conceder CRUD sobre los modelos de
 instalaciones, licencias, clientes, usuarios o claves. La operación de dominio
@@ -539,6 +542,13 @@ function spiderDemoRequest(
 - La licencia debe continuar activa, ser DEMO y no haber cambiado antes de la
   activación.
 - El token y la contraseña nunca aparecen en respuestas de estado.
+- El BFF vincula la activación a su sesión con `entry_binding`. Solo esa respuesta
+  privada puede incluir `entry_token`, válido durante cinco minutos y una sola
+  vez. El BFF lo conserva en sesión, lo retira del JSON público y continúa por
+  POST hacia Login; no se utiliza como parámetro de URL ni como credencial API.
+- Las nuevas DEMO de las plantillas confirman su configuración en `/Wizard` y
+  comienzan con productos e inventario vacíos. Un reintento conserva la versión
+  de esquema fijada y no borra la base parcial.
 - El correo final incluye usuario, URL y vencimiento, pero nunca la contraseña.
 - Un fallo del correo de bienvenida no elimina el tenant.
 - Al vencer el mes, el tenant se suspende con `trial_expired`; su base y

@@ -203,6 +203,16 @@ Estos cambios viven en `html/Core/` y se pierden si se actualiza FacturaScripts.
 
 ### Key Conventions
 
+- **Onboarding DEMO (Core)**: `Core/Controller/AdminPlugins.php` ofrece el hook
+  `afterRebuild()`; SpiderBuilder lo utiliza solo en el maestro para preparar el
+  esquema, la API restringida y las licencias. `Core/Model/Base/ModelTrait.php`
+  permite descartar metadatos con `resetModelFields()` después de reconstruir.
+  `Core/Base/TenantOnboardingPolicy.php` y `Core/Base/Controller.php` dirigen al
+  titular de nuevas DEMO pendientes a `/Wizard`. No imponer este flujo a tenants
+  anteriores. `Core/View/Master/ListView.html.twig` añade orientación a catálogos
+  vacíos después de completar el asistente. Conservar estos cambios al actualizar
+  Core; las pruebas están en `Plugins/SpiderBuilder/Test/`.
+
 - **Pantallas de error SpiderCode (Core)**: `html/Core/ErrorPage.php` y `html/Core/View/Error/Standalone.html.php` unifican la presentación de excepciones (`Core/Template/ErrorController.php`, `Core/Error/DefaultError.php`), errores fatales (`Core/CrashReport.php`), páginas no encontradas (`Core/Error/PageNotFound.php`), acceso denegado (`Core/Error/AccessDenied.php`) y sistema ya instalado (`Core/Error/AlreadyInstalled.php`). `Core/Base/Controller.php` dirige la plantilla antigua `Error/AccessDenied` al controlador común, conservando el estado 403 también para permisos sobre registros. Los detalles solo se generan para `Session::get('user')` autenticado, habilitado y administrador; no consultar nuevamente la BD ni confiar en cookies o `FS_DEBUG`. `Core/Kernel.php` limpia la salida parcial antes de mostrar el error. Conservar esta personalización al actualizar FacturaScripts. La prueba aislada y las notas de registro están en `html/Test/README.md`.
 
 - **Language**: All code comments, translations, and UI text are in **Spanish**

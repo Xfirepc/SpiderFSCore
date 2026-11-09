@@ -212,6 +212,19 @@
                 sessionStorage.removeItem(keyName);
                 sessionStorage.removeItem('demo-pending-registration');
                 activationForm.reset();
+                if (result.continue_url) {
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = result.continue_url;
+                    var field = document.createElement('input');
+                    field.type = 'hidden';
+                    field.name = 'csrf';
+                    field.value = csrf;
+                    form.appendChild(field);
+                    document.body.appendChild(form);
+                    form.submit();
+                    return;
+                }
                 showSuccess(result);
             }).catch(function (error) {
                 showNotice(error.message);

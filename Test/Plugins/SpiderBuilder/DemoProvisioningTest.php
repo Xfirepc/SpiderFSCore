@@ -99,6 +99,26 @@ class DemoProvisioningTest extends TestCase
         $this->assertSame(['database' => 'master_test', 'api_key' => 'portal-test-key'], DemoPortalConfig::fromContents($configuration));
     }
 
+    public function testPortalUsesItsConfiguredInternalOrigin(): void
+    {
+        $this->assertSame('http://main_spidercode_nginx/api/3', DemoPortalConfig::internalApiUrl(
+            "<?php define('FS_INTERNAL_URI', 'http://main_spidercode_nginx/');"));
+        $this->assertSame('http://127.0.0.1:8080/app/api/3', DemoPortalConfig::internalApiUrl(
+            "<?php define('FS_INTERNAL_URI', 'http://127.0.0.1:8080/app');"));
+    }
+
+    public function testPortalRejectsAnUnconfiguredInternalOrigin(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        DemoPortalConfig::internalApiUrl("<?php define('FS_DB_NAME', 'master_test');");
+    }
+
+    public function testPortalRejectsCredentialsInItsInternalOrigin(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        DemoPortalConfig::internalApiUrl("<?php define('FS_INTERNAL_URI', 'https://user:password@example.test');");
+    }
+
     public function testPortalRejectsMissingDedicatedKeyInsteadOfUsingGeneralKey(): void
     {
         $this->expectException(\RuntimeException::class);

@@ -297,6 +297,12 @@ class Controller implements ControllerInterface
 
         // ejecutamos la parte privada o pública del controlador
         if ($this->auth()) {
+            if ($this->className !== 'Wizard' && TenantOnboardingPolicy::required(Session::user())) {
+                $response->headers->set('Location', 'Wizard');
+                $response->setStatusCode(303);
+                $response->send();
+                return;
+            }
             $permissions = new ControllerPermissions(Session::user(), $this->className);
             $this->privateCore($response, Session::user(), $permissions);
         } else {

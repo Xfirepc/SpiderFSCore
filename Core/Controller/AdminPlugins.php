@@ -200,6 +200,12 @@ class AdminPlugins extends Controller
         Plugins::deploy(true, true);
         Cache::clear();
         Tools::log()->notice('rebuild-completed');
+        $this->afterRebuild();
+    }
+
+    /** Punto de extensión tras una reconstrucción solicitada por el administrador. */
+    protected function afterRebuild(): void
+    {
     }
 
     private function removePluginAction(): void
