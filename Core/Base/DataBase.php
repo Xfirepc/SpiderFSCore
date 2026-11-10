@@ -363,11 +363,11 @@ final class DataBase
      *
      * @return array
      */
-    public function getTables(): array
+    public function getTables(bool $refresh = false): array
     {
         if (false === $this->connected()) {
             return [];
-        } elseif (empty(self::$tables)) {
+        } elseif ($refresh || empty(self::$tables)) {
             self::$tables = self::$engine->listTables(self::$link);
         }
 
@@ -465,6 +465,15 @@ final class DataBase
         return $this->selectLimit($sql, 0);
     }
 
+    /** Error de la última operación, para distinguir metadatos vacíos de una consulta fallida. */
+    public function lastError(): string
+    {
+        if (!self::$engine || !self::$link) {
+            return 'No hay conexión con la base de datos.';
+        }
+        return self::$engine->errorMessage(self::$link);
+    }
+
     /**
      * Execute a SQL statement of type select, but with pagination,
      * and return an array with the results or an empty array in case of failure.
@@ -520,10 +529,10 @@ final class DataBase
      *
      * @return bool
      */
-    public function tableExists(string $tableName, array $list = []): bool
+    public function tableExists(string $tableName, array $list = [], bool $refresh = false): bool
     {
         if (empty($list)) {
-            $list = $this->getTables();
+            $list = $this->getTables($refresh);
         }
 
         return in_array($tableName, $list, false);

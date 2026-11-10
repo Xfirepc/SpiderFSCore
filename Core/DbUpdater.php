@@ -24,6 +24,8 @@ use FacturaScripts\Core\Base\DataBase;
 use FacturaScripts\Core\Base\DataBase\DataBaseQueries;
 use FacturaScripts\Core\Base\PluginDeploy;
 use FacturaScripts\Core\Lib\Inventory\InventorySchemaMigration;
+use FacturaScripts\Core\Lib\SchemaCheckLock;
+use FacturaScripts\Core\Lib\TableSchemaCache;
 
 /**
  * Actualiza la estructura de la base de datos.
@@ -37,6 +39,9 @@ final class DbUpdater
     /** @var array */
     private static $checkedTables;
 
+    private static $checkedGeneration;
+    private static $checkedDatabase;
+
     /** @var DataBase */
     private static $dataBase;
 
@@ -44,6 +49,16 @@ final class DbUpdater
     private static $sqlTool;
 
     public static function createTable(string $tableName, array $structure = [], string $sqlAfter = ''): bool
+    {
+        return self::withSchemaLock(static function () use ($tableName, $structure, $sqlAfter): bool {
+            if (self::isTableChecked($tableName)) {
+                return false;
+            }
+            return self::createTableUnlocked($tableName, $structure, $sqlAfter);
+        });
+    }
+
+    private static function createTableUnlocked(string $tableName, array $structure, string $sqlAfter): bool
     {
         if (empty($structure)) {
             $filePath = self::getTableXmlLocation($tableName);
@@ -55,7 +70,7 @@ final class DbUpdater
             return false;
         }
 
-        if (self::db()->tableExists($tableName)) {
+        if (self::db()->tableExists($tableName, [], true)) {
             return false;
         }
 
@@ -75,7 +90,14 @@ final class DbUpdater
 
     public static function dropTable(string $tableName): bool
     {
-        if (false === self::db()->tableExists($tableName)) {
+        return self::withSchemaLock(static function () use ($tableName): bool {
+            return self::dropTableUnlocked($tableName);
+        });
+    }
+
+    private static function dropTableUnlocked(string $tableName): bool
+    {
+        if (false === self::db()->tableExists($tableName, [], true)) {
             return false;
         }
 
@@ -109,26 +131,11 @@ final class DbUpdater
 
     public static function isTableChecked(string $tableName): bool
     {
-        if (null === self::$checkedTables) {
-            // read the file
-            $file = Tools::folder('MyFiles', self::FILE_NAME);
-            if (false === file_exists($file)) {
-                self::$checkedTables = [];
-                return false;
-            }
-
-            $fileData = file_get_contents(Tools::folder('MyFiles', self::FILE_NAME));
-            $allTables = json_decode($fileData, true) ?? [];
-            $databaseName = defined('FS_DB_NAME') ? FS_DB_NAME : 'default';
-
-            // The filesystem can be shared by several tenants. Never reuse a
-            // table cache generated for another database.
-            self::$checkedTables = is_array($allTables[$databaseName] ?? null)
-                ? $allTables[$databaseName]
-                : [];
+        if (null === self::$checkedTables || self::$checkedDatabase !== self::databaseName()
+            || self::$checkedGeneration !== TableSchemaCache::generation()) {
+            self::reloadCheckedTables();
         }
-
-        return in_array($tableName, self::$checkedTables);
+        return in_array($tableName, self::$checkedTables, true);
     }
 
     public static function readTableXml(string $filePath): array
@@ -186,12 +193,15 @@ final class DbUpdater
 
     public static function rebuild(): void
     {
-        self::$checkedTables = [];
+        TableSchemaCache::invalidate();
+        self::$checkedTables = null;
+    }
 
-        // remove the file
-        $file = Tools::folder('MyFiles', self::FILE_NAME);
-        if (file_exists($file)) {
-            unlink($file);
+    public static function forgetDatabase(string $database): void
+    {
+        if ($database !== '') {
+            TableSchemaCache::invalidate($database);
+            self::$checkedTables = null;
         }
     }
 
@@ -201,6 +211,17 @@ final class DbUpdater
             return false;
         }
 
+        return self::withSchemaLock(static function () use ($tableName, $structure): bool {
+            // Otra solicitud puede haber terminado mientras esperábamos el bloqueo.
+            if (self::isTableChecked($tableName)) {
+                return false;
+            }
+            return self::updateTableUnlocked($tableName, $structure);
+        });
+    }
+
+    private static function updateTableUnlocked(string $tableName, array $structure): bool
+    {
         if (empty($structure)) {
             $filePath = self::getTableXmlLocation($tableName);
             $structure = self::readTableXml($filePath);
@@ -213,7 +234,15 @@ final class DbUpdater
 
         // compare table columns and constraints against xml definition
         $dbCols = self::db()->getColumns($tableName);
+        if (!$dbCols || self::db()->lastError() !== '') {
+            Tools::log()->error('No se pudo leer la estructura de ' . $tableName . '. Se conserva pendiente su comprobación.');
+            return false;
+        }
         $dbCons = self::db()->getConstraints($tableName);
+        if (self::db()->lastError() !== '') {
+            Tools::log()->error('No se pudieron leer las restricciones de ' . $tableName . '. Se conserva pendiente su comprobación.');
+            return false;
+        }
         $sql = self::compareColumns($tableName, $structure['columns'], $dbCols) .
             self::compareConstraints($tableName, $structure['constraints'], $dbCons);
         if (!empty($sql)) {
@@ -325,30 +354,32 @@ final class DbUpdater
 
     private static function save(string $tableName): void
     {
-        self::$checkedTables[] = $tableName;
+        self::$checkedTables = TableSchemaCache::remember(self::databaseName(), $tableName, self::$checkedGeneration);
+    }
 
-        Tools::folderCheckOrCreate(Tools::folder('MyFiles'));
+    private static function databaseName(): string
+    {
+        return defined('FS_DB_NAME') ? FS_DB_NAME : 'default';
+    }
 
-        $file = Tools::folder('MyFiles', self::FILE_NAME);
-        $allTables = [];
-        if (file_exists($file)) {
-            $allTables = json_decode(file_get_contents($file), true) ?? [];
+    private static function reloadCheckedTables(): void
+    {
+        $snapshot = TableSchemaCache::read(self::databaseName());
+        self::$checkedTables = $snapshot['tables'];
+        self::$checkedGeneration = $snapshot['generation'];
+        self::$checkedDatabase = self::databaseName();
+    }
+
+    private static function withSchemaLock(callable $operation): bool
+    {
+        $lock = new SchemaCheckLock(self::databaseName());
+        $lock->acquire();
+        try {
+            self::reloadCheckedTables();
+            return $operation();
+        } finally {
+            $lock->release();
         }
-        // Keep compatibility with PHP versions before 8.1, where
-        // array_is_list() does not exist.
-        $isLegacyList = [] === $allTables || array_keys($allTables) === range(0, count($allTables) - 1);
-        if ($isLegacyList) {
-            // Legacy format was a single list shared by all databases and is
-            // intentionally not migrated because its tenant is unknown.
-            $allTables = [];
-        }
-        $databaseName = defined('FS_DB_NAME') ? FS_DB_NAME : 'default';
-        $allTables[$databaseName] = array_values(array_unique(self::$checkedTables));
-
-        file_put_contents(
-            $file,
-            json_encode($allTables, JSON_PRETTY_PRINT)
-        );
     }
 
     private static function searchInArray(array $items, string $index, string $value): array

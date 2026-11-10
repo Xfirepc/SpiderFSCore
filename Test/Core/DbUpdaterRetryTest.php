@@ -30,8 +30,11 @@ final class DbUpdaterRetryTest extends TestCase
 
     protected function tearDown(): void
     {
-        $file = $this->temporaryFolder . '/MyFiles/' . DbUpdater::FILE_NAME;
-        if (file_exists($file)) unlink($file);
+        foreach (scandir($this->temporaryFolder . '/MyFiles') as $file) {
+            if ($file !== '.' && $file !== '..') {
+                unlink($this->temporaryFolder . '/MyFiles/' . $file);
+            }
+        }
         rmdir($this->temporaryFolder . '/MyFiles');
         rmdir($this->temporaryFolder);
         MiniLog::clear();
@@ -80,6 +83,30 @@ final class DbUpdaterRetryTest extends TestCase
         $this->assertSame(1, DbUpdaterRetryDatabaseProbe::$columnReads);
     }
 
+    public function testEmptyMetadataNeverTriggersColumnCreation(): void
+    {
+        DbUpdaterRetryDatabaseProbe::$columns = [];
+        $this->assertFalse(DbUpdater::updateTable('payments', $this->structure()));
+        $this->assertFalse(DbUpdater::isTableChecked('payments'));
+        $this->assertSame([], DbUpdaterRetryDatabaseProbe::$statements);
+    }
+
+    public function testFailedColumnIntrospectionRemainsPending(): void
+    {
+        DbUpdaterRetryDatabaseProbe::$columnError = 'Error de metadatos simulado';
+        $this->assertFalse(DbUpdater::updateTable('payments', $this->structure()));
+        $this->assertFalse(DbUpdater::isTableChecked('payments'));
+        $this->assertSame([], DbUpdaterRetryDatabaseProbe::$statements);
+    }
+
+    public function testFailedConstraintIntrospectionRemainsPending(): void
+    {
+        DbUpdaterRetryDatabaseProbe::$constraintError = 'Error de restricciones simulado';
+        $this->assertFalse(DbUpdater::updateTable('payments', $this->structure()));
+        $this->assertFalse(DbUpdater::isTableChecked('payments'));
+        $this->assertSame([], DbUpdaterRetryDatabaseProbe::$statements);
+    }
+
     private function structure(): array
     {
         return [
@@ -91,15 +118,27 @@ final class DbUpdaterRetryTest extends TestCase
 
 final class DbUpdaterRetryDatabaseProbe
 {
-    public static $execResult = true, $columns = [], $statements = [], $columnReads = 0;
+    public static $execResult = true, $statements = [], $columnReads = 0;
+    public static $columns = [['name' => 'legacy_id', 'type' => 'integer', 'default' => null, 'is_nullable' => 'YES']];
+    public static $columnError = '', $constraintError = '', $lastError = '';
     public function connect(): bool { return true; }
     public function exec(string $sql): bool
     {
         self::$statements[] = $sql;
         return self::$execResult;
     }
-    public function getColumns(string $table): array { ++self::$columnReads; return self::$columns; }
-    public function getConstraints(string $table): array { return []; }
+    public function getColumns(string $table): array
+    {
+        ++self::$columnReads;
+        self::$lastError = self::$columnError;
+        return self::$columns;
+    }
+    public function getConstraints(string $table): array
+    {
+        self::$lastError = self::$constraintError;
+        return [];
+    }
+    public function lastError(): string { return self::$lastError; }
     public function getEngine(): DbUpdaterRetryEngineProbe { return new DbUpdaterRetryEngineProbe(); }
 }
 

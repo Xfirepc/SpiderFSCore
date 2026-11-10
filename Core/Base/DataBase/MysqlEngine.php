@@ -145,9 +145,9 @@ class MysqlEngine extends DataBaseEngine
             return true;
         } elseif ($dbType == 'tinyint(1)' && $xmlType == 'boolean') {
             return true;
-        } elseif (substr($dbType, 0, 3) == 'int' && strtolower($xmlType) == 'integer') {
+        } elseif ($this->equivalentIntegerTypes($dbType, $xmlType)) {
             return true;
-        } elseif (substr($dbType, 0, 6) == 'double' && $xmlType == 'double precision') {
+        } elseif (strtolower(trim($dbType)) === 'double' && strtolower(trim($xmlType)) === 'double precision') {
             return true;
         } elseif (
             preg_match('/^(?:decimal|numeric)\(\s*(\d+)\s*,\s*(\d+)\s*\)$/i', trim($dbType), $actual)
@@ -165,6 +165,22 @@ class MysqlEngine extends DataBaseEngine
         }
 
         return false;
+    }
+
+    /** El ancho visual de los enteros no cambia su capacidad ni su signo. */
+    private function equivalentIntegerTypes(string $actual, string $expected): bool
+    {
+        $pattern = '/^(tinyint|smallint|mediumint|int|integer|bigint)(?:\s*\(\s*\d+\s*\))?((?:\s+(?:unsigned|zerofill))*)$/i';
+        if (!preg_match($pattern, trim($actual), $left) || !preg_match($pattern, trim($expected), $right)) {
+            return false;
+        }
+        $leftType = strtolower($left[1]) === 'integer' ? 'int' : strtolower($left[1]);
+        $rightType = strtolower($right[1]) === 'integer' ? 'int' : strtolower($right[1]);
+        $leftFlags = preg_split('/\s+/', strtolower(trim($left[2])), -1, PREG_SPLIT_NO_EMPTY);
+        $rightFlags = preg_split('/\s+/', strtolower(trim($right[2])), -1, PREG_SPLIT_NO_EMPTY);
+        sort($leftFlags);
+        sort($rightFlags);
+        return $leftType === $rightType && $leftFlags === $rightFlags;
     }
 
     /**
