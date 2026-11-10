@@ -208,8 +208,11 @@ Estos cambios viven en `html/Core/` y se pierden si se actualiza FacturaScripts.
   esquema, la API restringida y las licencias. `Core/Model/Base/ModelTrait.php`
   permite descartar metadatos con `resetModelFields()` después de reconstruir.
   `Core/Base/TenantOnboardingPolicy.php` y `Core/Base/Controller.php` dirigen al
-  titular de nuevas DEMO pendientes a `/Wizard`. No imponer este flujo a tenants
-  anteriores. `Core/View/Master/ListView.html.twig` añade orientación a catálogos
+  titular de DEMO pendientes a `/Wizard`. Las DEMO administradas anteriores
+  pueden incorporarse marcando su configuración electrónica como pendiente, sin
+  repetir la preparación básica. Un aplazamiento por fallo del SRI permite usar NV
+  y mantiene el aviso para retomar. No imponer este flujo a tenants de producción.
+  `Core/View/Master/ListView.html.twig` añade orientación a catálogos
   vacíos después de completar el asistente. Conservar estos cambios al actualizar
   Core; las pruebas están en `Plugins/SpiderBuilder/Test/`.
 
