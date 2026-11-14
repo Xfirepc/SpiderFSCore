@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idempresa</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>nick</name>
+        <type>character varying(50)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>creado</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>actualizado</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idpaciente</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>servicio</name>
+        <type>character varying(150)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>inicio</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>fin</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>responsable</name>
+        <type>character varying(150)</type>
+    </column>
+    <column>
+        <name>estado</name>
+        <type>character varying(150)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>motivo</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>observaciones</name>
+        <type>text</type>
+    </column>
+    <constraint>
+        <name>sv_citas_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>sv_citas_empresa</name>
+        <type>FOREIGN KEY (idempresa) REFERENCES empresas (idempresa) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+    <constraint>
+        <name>sv_citas_idpaciente</name>
+        <type>FOREIGN KEY (idpaciente) REFERENCES sv_pacientes (id) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+</table>

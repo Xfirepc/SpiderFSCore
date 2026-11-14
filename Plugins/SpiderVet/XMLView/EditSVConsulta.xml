@@ -1,0 +1,179 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<view>
+    <columns>
+        <group name="paciente" title="Paciente y atención" numcolumns="12">
+            <column name="Paciente" numcolumns="6" order="100">
+                <widget type="autocomplete" fieldname="idpaciente" required="true" onclick="EditSVPaciente">
+                    <values source="sv_pacientes" fieldcode="id" fieldtitle="nombre" />
+                </widget>
+            </column>
+            <column name="Recepción (opcional)" numcolumns="4" order="110">
+                <widget type="autocomplete" fieldname="idrecepcion" onclick="EditSVRecepcion">
+                    <values source="sv_recepciones" fieldcode="id" fieldtitle="entrada" fieldfilter="idpaciente" />
+                </widget>
+            </column>
+            <column name="Estado" numcolumns="2" order="120">
+                <widget type="select" fieldname="estado" required="true">
+                    <values title="En atención">borrador</values>
+                    <values title="Terminada">terminada</values>
+                </widget>
+            </column>
+        </group>
+        <group name="consulta" title="1. Datos de la consulta" numcolumns="12">
+            <column name="Fecha y hora" numcolumns="4" order="100">
+                <widget type="datetime" fieldname="fecha" required="true" />
+            </column>
+            <column name="Tipo de consulta" numcolumns="4" order="110">
+                <widget type="select" fieldname="tipo" required="true">
+                    <values title="Primera vez">primera</values>
+                    <values title="Control">control</values>
+                    <values title="Urgencia">urgencia</values>
+                </widget>
+            </column>
+            <column name="Veterinario/a" numcolumns="4" order="120">
+                <widget type="text" fieldname="veterinario" required="true" maxlength="120" />
+            </column>
+        </group>
+        <group name="motivo" title="4. Antecedentes y motivo de consulta" numcolumns="12">
+            <column name="Motivo de consulta" numcolumns="12" order="100">
+                <widget type="textarea" fieldname="motivo" required="true" rows="3" />
+            </column>
+            <column name="Historia del problema actual: inicio, evolución, signos, frecuencia y cambios recientes" numcolumns="12" order="110">
+                <widget type="textarea" fieldname="historiaproblema" rows="3" />
+            </column>
+            <column name="Vacunación" numcolumns="4" order="120">
+                <widget type="select" fieldname="vacunacion">
+                    <values title="Completa">completa</values>
+                    <values title="Incompleta">incompleta</values>
+                    <values title="Desconocida">desconocida</values>
+                </widget>
+            </column>
+            <column name="Última vacunación" numcolumns="4" order="130">
+                <widget type="date" fieldname="ultimavacuna" />
+            </column>
+            <column name="Desparasitación" numcolumns="4" order="140">
+                <widget type="select" fieldname="desparasitacion">
+                    <values title="Interna">interna</values>
+                    <values title="Externa">externa</values>
+                    <values title="Interna y externa">ambas</values>
+                    <values title="Desconocida">desconocida</values>
+                </widget>
+            </column>
+            <column name="Última desparasitación" numcolumns="4" order="150">
+                <widget type="date" fieldname="ultimadesparasitacion" />
+            </column>
+            <column name="Alimentación" numcolumns="8" order="160">
+                <widget type="textarea" fieldname="alimentacion" rows="3" />
+            </column>
+            <column name="Alergias / RAM" numcolumns="6" order="170">
+                <widget type="textarea" fieldname="alergias" rows="3" />
+            </column>
+            <column name="Medicamentos actuales" numcolumns="6" order="180">
+                <widget type="textarea" fieldname="medicamentos" rows="3" />
+            </column>
+            <column name="Antecedentes médicos / quirúrgicos" numcolumns="12" order="190">
+                <widget type="textarea" fieldname="antecedentes" rows="3" />
+            </column>
+        </group>
+        <group name="examen" title="5. Examen físico" numcolumns="12">
+            <column name="Temperatura (°C)" numcolumns="3" order="100">
+                <widget type="number" fieldname="temperatura" min="0" decimal="2" />
+            </column>
+            <column name="FC (lpm)" numcolumns="3" order="110">
+                <widget type="number" fieldname="frecuenciacardiaca" min="0" decimal="2" />
+            </column>
+            <column name="FR (rpm)" numcolumns="3" order="120">
+                <widget type="number" fieldname="frecuenciarespiratoria" min="0" decimal="2" />
+            </column>
+            <column name="Peso (kg)" numcolumns="3" order="130">
+                <widget type="number" fieldname="peso" min="0" decimal="2" />
+            </column>
+            <column name="Mucosas" numcolumns="3" order="140">
+                <widget type="text" fieldname="mucosas" />
+            </column>
+            <column name="TLLC (s)" numcolumns="3" order="150">
+                <widget type="number" fieldname="tllc" min="0" decimal="2" />
+            </column>
+            <column name="Hidratación (%)" numcolumns="3" order="160">
+                <widget type="number" fieldname="hidratacion" min="0" max="100" decimal="2" />
+            </column>
+            <column name="CC / BCS (sobre 9)" numcolumns="3" order="170">
+                <widget type="number" fieldname="bcs" min="1" max="9" decimal="2" />
+            </column>
+            <column name="Estado general / actitud" numcolumns="6" order="180">
+                <widget type="textarea" fieldname="estadogeneral" rows="3" />
+            </column>
+            <column name="Piel y pelaje" numcolumns="6" order="190">
+                <widget type="textarea" fieldname="pielpelaje" rows="3" />
+            </column>
+            <column name="Ojos / oídos / cavidad oral" numcolumns="6" order="200">
+                <widget type="textarea" fieldname="ojosoidosboca" rows="3" />
+            </column>
+            <column name="Respiratorio" numcolumns="6" order="210">
+                <widget type="textarea" fieldname="respiratorio" rows="3" />
+            </column>
+            <column name="Cardiovascular" numcolumns="6" order="220">
+                <widget type="textarea" fieldname="cardiovascular" rows="3" />
+            </column>
+            <column name="Digestivo / abdomen" numcolumns="6" order="230">
+                <widget type="textarea" fieldname="digestivo" rows="3" />
+            </column>
+            <column name="Urinario / genital" numcolumns="6" order="240">
+                <widget type="textarea" fieldname="urinariogenital" rows="3" />
+            </column>
+            <column name="Neurológico / músculo-esquelético / otros" numcolumns="6" order="250">
+                <widget type="textarea" fieldname="neurologico" rows="3" />
+            </column>
+        </group>
+        <group name="evaluacion" title="6. Evaluación clínica" numcolumns="12">
+            <column name="Lista de problemas / hallazgos relevantes" numcolumns="12" order="100">
+                <widget type="textarea" fieldname="problemas" rows="3" />
+            </column>
+            <column name="Diagnóstico presuntivo / diferenciales" numcolumns="12" order="110">
+                <widget type="textarea" fieldname="diagnosticopresuntivo" rows="3" />
+            </column>
+            <column name="Diagnóstico definitivo" numcolumns="12" order="120">
+                <widget type="textarea" fieldname="diagnosticodefinitivo" rows="3" />
+            </column>
+        </group>
+        <group name="seguimiento" title="9. Indicaciones para casa y seguimiento" numcolumns="12">
+            <column name="Recomendaciones / cuidados en casa" numcolumns="12" order="100">
+                <widget type="textarea" fieldname="cuidados" rows="3" />
+            </column>
+            <column name="Próximo control (fecha y hora)" numcolumns="4" order="110">
+                <widget type="datetime" fieldname="proximocontrol" />
+            </column>
+            <column name="Requiere ayuno" numcolumns="4" order="120">
+                <widget type="select" fieldname="ayuno">
+                    <values title="Sí">si</values>
+                    <values title="No">no</values>
+                    <values title="No definido">no_definido</values>
+                </widget>
+            </column>
+            <column name="Signos de alarma" numcolumns="8" order="130">
+                <widget type="textarea" fieldname="alarmas" rows="3" />
+            </column>
+            <column name="Llamada de seguimiento" numcolumns="4" order="140">
+                <widget type="select" fieldname="llamadaseguimiento">
+                    <values title="Sí">si</values>
+                    <values title="No">no</values>
+                    <values title="No definido">no_definido</values>
+                </widget>
+            </column>
+            <column name="Fecha de llamada de seguimiento" numcolumns="4" order="150">
+                <widget type="date" fieldname="fechaseguimiento" />
+            </column>
+        </group>
+        <group name="conformidad" title="10. Conformidad y firma" numcolumns="12">
+            <column name="Conformidad del tutor recibida" numcolumns="4" order="100">
+                <widget type="select" fieldname="conformidad">
+                    <values title="Pendiente">pendiente</values>
+                    <values title="Recibida">recibida</values>
+                </widget>
+            </column>
+            <column name="Observaciones de conformidad" numcolumns="8" order="110">
+                <widget type="textarea" fieldname="notasconformidad" rows="3" />
+            </column>
+        </group>
+    </columns>
+</view>

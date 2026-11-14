@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view>
+    <columns>
+        <column name="N.º de historia clínica" numcolumns="4" order="100">
+            <widget type="text" fieldname="historia" />
+        </column>
+        <column name="Nombre" numcolumns="4" order="110">
+            <widget type="text" fieldname="nombre" />
+        </column>
+        <column name="Tutor / cliente" numcolumns="8" order="120">
+            <widget type="autocomplete" fieldname="codcliente">
+                <values source="clientes" fieldcode="codcliente" fieldtitle="nombre" />
+            </widget>
+        </column>
+        <column name="Especie" numcolumns="4" order="130">
+            <widget type="select" fieldname="especie">
+                <values title="Canino">canino</values>
+                <values title="Felino">felino</values>
+                <values title="Otro">otro</values>
+            </widget>
+        </column>
+        <column name="Raza" numcolumns="4" order="140">
+            <widget type="text" fieldname="raza" />
+        </column>
+        <column name="Microchip" numcolumns="4" order="150">
+            <widget type="text" fieldname="microchip" />
+        </column>
+        <column name="Paciente activo" numcolumns="4" order="160">
+            <widget type="checkbox" fieldname="activo" />
+        </column>
+    </columns>
+</view>

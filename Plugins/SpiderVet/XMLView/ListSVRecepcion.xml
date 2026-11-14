@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view>
+    <columns>
+        <column name="Fecha y hora de llegada" numcolumns="4" order="100">
+            <widget type="datetime" fieldname="entrada" />
+        </column>
+        <column name="Paciente" numcolumns="6" order="110">
+            <widget type="autocomplete" fieldname="idpaciente">
+                <values source="sv_pacientes" fieldcode="id" fieldtitle="nombre" />
+            </widget>
+        </column>
+        <column name="Servicio" numcolumns="4" order="120">
+            <widget type="select" fieldname="servicio">
+                <values title="Veterinaria">veterinaria</values>
+                <values title="Peluquería">peluqueria</values>
+                <values title="Veterinaria y peluquería">ambos</values>
+            </widget>
+        </column>
+        <column name="Estado" numcolumns="4" order="130">
+            <widget type="select" fieldname="estado">
+                <values title="Pendiente">pendiente</values>
+                <values title="En atención">en_atencion</values>
+                <values title="Completada">completada</values>
+                <values title="Cancelada">cancelada</values>
+            </widget>
+        </column>
+        <column name="Motivo / servicio solicitado" numcolumns="12" order="140">
+            <widget type="textarea" fieldname="motivo" rows="3" />
+        </column>
+        <column name="Fecha y hora de salida" numcolumns="4" order="150">
+            <widget type="datetime" fieldname="salida" />
+        </column>
+    </columns>
+    <rows>
+        <row type="status" fieldname="estado">
+            <option color="warning" title="Pendiente">pendiente</option>
+            <option color="info" title="En atención">en_atencion</option>
+            <option color="success" title="Completada">completada</option>
+            <option color="secondary" title="Cancelada">cancelada</option>
+        </row>
+    </rows>
+</view>

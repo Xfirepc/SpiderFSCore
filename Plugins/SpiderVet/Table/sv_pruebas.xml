@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idempresa</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>nick</name>
+        <type>character varying(50)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>creado</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>actualizado</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idconsulta</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>fecha</name>
+        <type>date</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>examen</name>
+        <type>text</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>resultado</name>
+        <type>text</type>
+    </column>
+    <constraint>
+        <name>sv_pruebas_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>sv_pruebas_empresa</name>
+        <type>FOREIGN KEY (idempresa) REFERENCES empresas (idempresa) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+    <constraint>
+        <name>sv_pruebas_idconsulta</name>
+        <type>FOREIGN KEY (idconsulta) REFERENCES sv_consultas (id) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+</table>

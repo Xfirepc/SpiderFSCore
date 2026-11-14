@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="referrer" content="no-referrer">
+    <title>Recuperar contraseña</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #f4f7fa; color: #172a40; font: 16px/1.5 system-ui, sans-serif; padding: 32px 16px; }
+        main { max-width: 480px; margin: 5vh auto; padding: 32px; border-radius: 12px; background: white; border-top: 4px solid #16858e; box-shadow: 0 8px 32px #172a4010; }
+        h1 { font-size: 1.6rem; margin-top: 0; } label { display: block; margin-top: 18px; font-weight: 600; }
+        input, button { width: 100%; border-radius: 6px; padding: 12px; font: inherit; } input { border: 1px solid #8b9aaa; }
+        button { background: #126d77; color: white; border: 0; margin: 16px 0; cursor: pointer; }
+        a { color: #126d77; } details { border-bottom: 1px solid #dce3ea; padding: 16px 0; } summary { cursor: pointer; font-weight: 600; }
+        .help { color: #536477; font-size: .875rem; } .notice, .error { padding: 12px; border-radius: 6px; background: #e5f5ef; } .error { background: #fff0ed; color: #8b2018; }
+        :focus-visible { outline: 3px solid #16858e; outline-offset: 3px; }
+        @media (prefers-color-scheme: dark) { body { background: #111d2b; color: #e3edf7; } main { background: #1c2c3e; } input { background: #111d2b; color: #e3edf7; } a { color: #6be0e8; } .help { color: #b4c5d6; } .notice { color: #174638; } }
+    </style>
+</head>
+<body><main>
+    <h1>Recuperar contraseña</h1>
+    {% if fsc.empresa.nombrecorto %}<p>{{ fsc.empresa.nombrecorto }}</p>{% endif %}
+    {% include 'Login/RecoveryForm.html.twig' %}
+</main></body>
+</html>

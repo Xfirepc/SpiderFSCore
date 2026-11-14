@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<view>
+    <columns>
+        <group name="atencion" title="Atención de peluquería" numcolumns="12">
+            <column name="Paciente" numcolumns="6" order="100">
+                <widget type="autocomplete" fieldname="idpaciente" required="true" onclick="EditSVPaciente">
+                    <values source="sv_pacientes" fieldcode="id" fieldtitle="nombre" />
+                </widget>
+            </column>
+            <column name="Recepción (opcional)" numcolumns="6" order="110">
+                <widget type="autocomplete" fieldname="idrecepcion" onclick="EditSVRecepcion">
+                    <values source="sv_recepciones" fieldcode="id" fieldtitle="entrada" fieldfilter="idpaciente" />
+                </widget>
+            </column>
+            <column name="Inicio" numcolumns="4" order="120">
+                <widget type="datetime" fieldname="inicio" required="true" />
+            </column>
+            <column name="Fin" numcolumns="4" order="130">
+                <widget type="datetime" fieldname="fin" />
+            </column>
+            <column name="Estado" numcolumns="4" order="140">
+                <widget type="select" fieldname="estado" required="true">
+                    <values title="En atención">borrador</values>
+                    <values title="Terminada">terminada</values>
+                </widget>
+            </column>
+            <column name="Encargado" numcolumns="4" order="150">
+                <widget type="select" fieldname="responsable">
+                    <values source="users" fieldcode="nick" fieldtitle="nick" />
+                </widget>
+            </column>
+            <column name="Servicio solicitado" numcolumns="8" order="160">
+                <widget type="textarea" fieldname="solicitado" required="true" rows="3" />
+            </column>
+        </group>
+        <group name="manejo" title="Baño y manejo" numcolumns="12">
+            <column name="Indicaciones de baño para esta atención" numcolumns="12" order="100">
+                <widget type="textarea" fieldname="indicacionesbano" rows="3" />
+            </column>
+            <column name="Observaciones de ingreso" numcolumns="12" order="110">
+                <widget type="textarea" fieldname="observacionesingreso" rows="3" />
+            </column>
+        </group>
+        <group name="entrega" title="Servicio realizado y entrega" numcolumns="12">
+            <column name="Servicio realizado" numcolumns="12" order="100">
+                <widget type="textarea" fieldname="realizado" rows="3" />
+            </column>
+            <column name="Incidencias" numcolumns="12" order="110">
+                <widget type="textarea" fieldname="incidencias" rows="3" />
+            </column>
+            <column name="Recomendaciones de entrega" numcolumns="12" order="120">
+                <widget type="textarea" fieldname="recomendaciones" rows="3" />
+            </column>
+        </group>
+    </columns>
+</view>

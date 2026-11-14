@@ -62,4 +62,12 @@
         <name>logs_pkey</name>
         <type>PRIMARY KEY (id)</type>
     </constraint>
+    <index name="idx_fs_logs_channel">
+        <column name="channel"/>
+    </index>
+    <index name="idx_fs_logs_document">
+        <column name="model"/>
+        <column name="modelcode"/>
+        <column name="time"/>
+    </index>
 </table>

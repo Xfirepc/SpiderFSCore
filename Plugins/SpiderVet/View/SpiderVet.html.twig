@@ -1,0 +1,120 @@
+{% extends 'Master/MenuTemplate.html.twig' %}
+
+{% block css %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('Dinamic/Assets/CSS/SpiderVet.css') }}"/>
+{% endblock %}
+
+{% block body %}
+<main class="container-fluid sv-workspace py-4">
+    <div class="sv-heading mb-4">
+        <div>
+            <span class="sv-eyebrow"><i class="fas fa-paw mr-1" aria-hidden="true"></i> SpiderVet</span>
+            <h1 class="h3 mt-2 mb-1">Recepción y agenda</h1>
+            <p class="text-muted mb-0">El cuidado de cada mascota, desde su llegada hasta su próximo control.</p>
+        </div>
+        <div class="sv-actions">
+            {% if fsc.can('EditSVPaciente', true) %}
+                <a class="btn btn-outline-primary" href="{{ asset('EditSVPaciente') }}"><i class="fas fa-paw mr-1" aria-hidden="true"></i> Nuevo paciente</a>
+            {% endif %}
+            {% if fsc.can('EditSVCita', true) %}
+                <a class="btn btn-primary" href="{{ asset('EditSVCita') }}"><i class="fas fa-calendar-plus mr-1" aria-hidden="true"></i> Nueva cita</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="row mb-4">
+        {% for label, value in {'Pacientes registrados': fsc.totals.patients, 'Citas del día': fsc.totals.appointments, 'Pendientes y en atención': fsc.totals.waiting} %}
+            <div class="col-md-4 mb-2"><div class="sv-stat"><span class="text-muted">{{ label }}</span><strong>{{ value }}</strong></div></div>
+        {% endfor %}
+    </div>
+    <section class="sv-panel mb-4" aria-label="Buscar pacientes">
+        <form method="get" action="{{ asset('SpiderVet') }}" class="sv-search">
+            <input type="hidden" name="day" value="{{ fsc.day }}"/>
+            <label for="sv-search" class="font-weight-bold mb-0">Buscar paciente</label>
+            <input id="sv-search" type="search" name="q" value="{{ fsc.query }}" class="form-control" maxlength="150"
+                   placeholder="Nombre, tutor, microchip o número de historia clínica"/>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search mr-1" aria-hidden="true"></i> Buscar</button>
+            {% if fsc.can('ListSVPaciente') %}<a href="{{ asset('ListSVPaciente') }}" class="btn btn-link">Ver todos</a>{% endif %}
+        </form>
+        {% if fsc.query %}
+            <div class="sv-patient-results mt-3">
+                {% for patient in fsc.patients %}
+                    <a href="{{ asset(patient.url('edit')) }}" class="sv-patient-result">
+                        <span class="sv-avatar"><i class="fas fa-paw" aria-hidden="true"></i></span>
+                        <span><strong>{{ fixHtml(patient.nombre) }}</strong><small>{{ patient.historia }} · {{ fixHtml(patient.nombretutor) }}</small></span>
+                        {% if not patient.activo %}<span class="badge badge-secondary ml-auto">Inactivo</span>{% endif %}
+                    </a>
+                {% else %}<p class="text-muted mb-0">No se encontraron pacientes con esa búsqueda.</p>{% endfor %}
+            </div>
+        {% endif %}
+    </section>
+    <section class="sv-panel mb-4">
+        <div class="sv-section-heading">
+            <div><h2 class="h5 mb-1">Sala de espera</h2><p class="text-muted small mb-0">Incluye todas las llegadas que siguen pendientes o en atención.</p></div>
+            <div class="sv-actions">
+                {% if fsc.can('ListSVRecepcion') %}<a href="{{ asset('ListSVRecepcion') }}" class="btn btn-sm btn-outline-secondary">Todas las recepciones</a>{% endif %}
+                {% if fsc.can('EditSVRecepcion', true) %}<a href="{{ asset('EditSVRecepcion') }}" class="btn btn-sm btn-success"><i class="fas fa-plus mr-1" aria-hidden="true"></i> Llegada sin cita</a>{% endif %}
+            </div>
+        </div>
+        <div class="table-responsive mt-3">
+            <table class="table sv-table mb-0">
+                <thead><tr><th>Llegada</th><th>Paciente / tutor</th><th>Servicio</th><th>Estado</th><th>Atención</th></tr></thead>
+                <tbody>
+                {% for entry in fsc.receptions %}
+                    {% set r = entry.record %}
+                    <tr>
+                        <td data-label="Llegada"><a href="{{ asset(r.url('edit')) }}">{{ r.entrada }}</a></td>
+                        <td data-label="Paciente"><div><a href="{{ asset(entry.patient.url('edit')) }}"><strong>{{ fixHtml(entry.patient.nombre) }}</strong></a><small>{{ fixHtml(entry.patient.nombretutor) }}</small></div></td>
+                        <td data-label="Servicio">{{ r.servicio == 'ambos' ? 'Veterinaria y peluquería' : (r.servicio == 'peluqueria' ? 'Peluquería' : 'Veterinaria') }}</td>
+                        <td data-label="Estado"><span><span class="badge {{ r.estado == 'en_atencion' ? 'badge-info' : 'badge-warning' }}">{{ r.estado == 'en_atencion' ? 'En atención' : 'Pendiente' }}</span></span></td>
+                        <td data-label="Atención"><div class="sv-actions">
+                            {% if r.servicio in ['veterinaria', 'ambos'] and fsc.can('EditSVConsulta', true) %}<a class="btn btn-sm btn-outline-primary" href="{{ asset(entry.clinicalUrl) }}"><i class="fas fa-stethoscope mr-1" aria-hidden="true"></i> Consulta</a>{% endif %}
+                            {% if r.servicio in ['peluqueria', 'ambos'] and fsc.can('EditSVPeluqueria', true) %}<a class="btn btn-sm btn-outline-primary" href="{{ asset(entry.groomingUrl) }}"><i class="fas fa-cut mr-1" aria-hidden="true"></i> Peluquería</a>{% endif %}
+                        </div></td>
+                    </tr>
+                {% else %}<tr><td colspan="5" class="sv-empty"><i class="fas fa-mug-hot" aria-hidden="true"></i><span>No hay pacientes pendientes de atención.</span></td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="sv-panel">
+        <div class="sv-section-heading">
+            <div><h2 class="h5 mb-1">Agenda del día</h2><p class="text-muted small mb-0">Registra la llegada para abrir la recepción del paciente.</p></div>
+            <form method="get" action="{{ asset('SpiderVet') }}" class="sv-actions">
+                <input type="hidden" name="q" value="{{ fsc.query }}"/>
+                <label for="sv-day" class="sr-only">Día de la agenda</label>
+                <input id="sv-day" type="date" name="day" value="{{ fsc.day }}" class="form-control form-control-sm" required/>
+                <button class="btn btn-sm btn-outline-primary" type="submit">Ver día</button>
+            </form>
+        </div>
+        <div class="table-responsive mt-3">
+            <table class="table sv-table mb-0">
+                <thead><tr><th>Hora</th><th>Paciente / tutor</th><th>Servicio</th><th>Encargado</th><th>Estado</th><th>Recepción</th></tr></thead>
+                <tbody>
+                {% for entry in fsc.appointments %}
+                    {% set a = entry.record %}
+                    <tr>
+                        <td data-label="Hora"><a href="{{ asset(a.url('edit')) }}">{{ a.inicio|date('H:i') }} – {{ a.fin|date('H:i') }}</a></td>
+                        <td data-label="Paciente"><div><strong>{{ fixHtml(entry.patient.nombre) }}</strong><small>{{ fixHtml(entry.patient.nombretutor) }}</small></div></td>
+                        <td data-label="Servicio">{{ a.servicio == 'ambos' ? 'Veterinaria y peluquería' : (a.servicio == 'peluqueria' ? 'Peluquería' : 'Veterinaria') }}</td>
+                        <td data-label="Encargado">{{ fixHtml(a.responsable|default('Sin asignar')) }}</td>
+                        <td data-label="Estado">{{ {'programada':'Programada','confirmada':'Confirmada','recibida':'Recibida','completada':'Completada','cancelada':'Cancelada','no_asistio':'No asistió'}[a.estado] }}</td>
+                        <td data-label="Recepción">
+                            {% if a.estado in ['programada', 'confirmada', 'recibida'] and fsc.can('EditSVRecepcion', true) and fsc.can('EditSVCita', true) and fsc.permissions.allowUpdate %}
+                                <form method="post" action="{{ asset('SpiderVet') }}" class="sv-check-in">
+                                    {{ formToken() }}
+                                    <input type="hidden" name="action" value="check-in"/><input type="hidden" name="idcita" value="{{ a.id }}"/>
+                                    <button class="btn btn-sm btn-success" type="submit">{{ a.estado == 'recibida' ? 'Abrir recepción' : 'Registrar llegada' }}</button>
+                                </form>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                    </tr>
+                {% else %}<tr><td colspan="6" class="sv-empty"><i class="far fa-calendar" aria-hidden="true"></i><span>No hay citas para este día.</span></td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if fsc.can('ListSVCita') %}<a class="btn btn-link btn-sm mt-2" href="{{ asset('ListSVCita') }}">Ver agenda completa</a>{% endif %}
+    </section>
+</main>
+<script src="{{ asset('Dinamic/Assets/JS/SpiderVet.js') }}" defer></script>
+{% endblock %}

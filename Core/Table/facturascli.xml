@@ -237,6 +237,10 @@
         <name>facturascli_pkey</name>
         <type>PRIMARY KEY (idfactura)</type>
     </constraint>
+    <index name="idx_fs_customer_balance">
+        <column name="codcliente"/>
+        <column name="pagada"/>
+    </index>
     <constraint>
         <name>ca_facturascli_codagente</name>
         <type>FOREIGN KEY (codagente) REFERENCES agentes (codagente) ON DELETE SET NULL ON UPDATE CASCADE</type>

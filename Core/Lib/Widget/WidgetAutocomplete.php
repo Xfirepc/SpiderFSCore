@@ -108,7 +108,16 @@ class WidgetAutocomplete extends WidgetSelect
      */
     protected function getSelected()
     {
-        return empty($this->selected) ? static::$codeModel->getDescription($this->source, $this->fieldcode, $this->value, $this->fieldtitle) : $this->selected;
+        if (!empty($this->selected)) {
+            return $this->selected;
+        }
+
+        // Un campo sin selección no debe buscar todos los registros con código NULL.
+        if (null === $this->value || '' === $this->value) {
+            return '';
+        }
+
+        return static::$codeModel->getDescription($this->source, $this->fieldcode, $this->value, $this->fieldtitle);
     }
 
     /**

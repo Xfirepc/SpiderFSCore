@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<view>
+    <columns>
+        <group name="recepcion" title="Recepción del paciente" numcolumns="12">
+            <column name="Paciente" numcolumns="6" order="100">
+                <widget type="autocomplete" fieldname="idpaciente" required="true" onclick="EditSVPaciente">
+                    <values source="sv_pacientes" fieldcode="id" fieldtitle="nombre" />
+                </widget>
+            </column>
+            <column name="Cita (opcional)" numcolumns="6" order="110">
+                <widget type="autocomplete" fieldname="idcita" onclick="EditSVCita">
+                    <values source="sv_citas" fieldcode="id" fieldtitle="inicio" fieldfilter="idpaciente" />
+                </widget>
+            </column>
+            <column name="Fecha y hora de llegada" numcolumns="4" order="120">
+                <widget type="datetime" fieldname="entrada" required="true" />
+            </column>
+            <column name="Servicio" numcolumns="4" order="130">
+                <widget type="select" fieldname="servicio" required="true">
+                    <values title="Veterinaria">veterinaria</values>
+                    <values title="Peluquería">peluqueria</values>
+                    <values title="Veterinaria y peluquería">ambos</values>
+                </widget>
+            </column>
+            <column name="Estado" numcolumns="4" order="140">
+                <widget type="select" fieldname="estado" required="true">
+                    <values title="Pendiente">pendiente</values>
+                    <values title="En atención">en_atencion</values>
+                    <values title="Completada">completada</values>
+                    <values title="Cancelada">cancelada</values>
+                </widget>
+            </column>
+            <column name="Motivo / servicio solicitado" numcolumns="12" order="150">
+                <widget type="textarea" fieldname="motivo" rows="3" />
+            </column>
+            <column name="Observaciones de ingreso" numcolumns="12" order="160">
+                <widget type="textarea" fieldname="observaciones" rows="3" />
+            </column>
+            <column name="Fecha y hora de salida" numcolumns="4" order="170">
+                <widget type="datetime" fieldname="salida" readonly="true" />
+            </column>
+        </group>
+    </columns>
+</view>

@@ -33,7 +33,9 @@ class MyFilesToken
     {
         self::checkPath($path);
 
-        $init = FS_DB_NAME . FS_DB_PASS;
+        // Permite renovar la contraseña de la BD conservando los enlaces existentes.
+        $secret = defined('FS_FILES_TOKEN_SECRET') ? FS_FILES_TOKEN_SECRET : FS_DB_PASS;
+        $init = FS_DB_NAME . $secret;
         if ($expiration && $permanent === false) {
             // si se especifica una fecha de expiración, la añadimos también al final para poder validarla
             return sha1($init . $path . $expiration) . '|' . $expiration;

@@ -406,7 +406,9 @@ abstract class ModelClass extends ModelCore
         }
         $return = true;
         foreach ($fields as $key => $value) {
-            if ($key == static::primaryColumn()) {
+            if (self::isGeneratedColumn($value)) {
+                continue;
+            } elseif ($key == static::primaryColumn()) {
                 $this->{$key} = empty($this->{$key}) ? null : $this->{$key};
             } elseif (null === $value['default'] && $value['is_nullable'] === 'NO' && $this->{$key} === null) {
                 Tools::log()->warning('field-can-not-be-null', ['%fieldName%' => $key, '%tableName%' => static::tableName()]);
@@ -489,7 +491,7 @@ abstract class ModelClass extends ModelCore
         $insertFields = [];
         $insertValues = [];
         foreach ($this->getModelFields() as $field) {
-            if (isset($this->{$field['name']})) {
+            if (!self::isGeneratedColumn($field) && isset($this->{$field['name']})) {
                 $fieldName = $field['name'];
                 $fieldValue = $values[$fieldName] ?? $this->{$fieldName};
 
@@ -542,7 +544,7 @@ abstract class ModelClass extends ModelCore
         $coma = ' SET';
 
         foreach ($this->getModelFields() as $field) {
-            if ($field['name'] !== static::primaryColumn()) {
+            if (!self::isGeneratedColumn($field) && $field['name'] !== static::primaryColumn()) {
                 $fieldName = $field['name'];
                 $fieldValue = $values[$fieldName] ?? $this->{$fieldName};
                 $sql .= $coma . ' ' . self::$dataBase->escapeColumn($fieldName) . ' = ' . self::$dataBase->var2str($fieldValue);
@@ -586,6 +588,12 @@ abstract class ModelClass extends ModelCore
         }
 
         return $result;
+    }
+
+    /** Los valores calculados pertenecen al motor, también al copiar un modelo. */
+    private static function isGeneratedColumn(array $field): bool
+    {
+        return (bool)preg_match('/\b(?:VIRTUAL|STORED|PERSISTENT) GENERATED\b/i', $field['extra'] ?? '');
     }
 
     /**

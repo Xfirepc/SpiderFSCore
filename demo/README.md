@@ -36,3 +36,10 @@ Los tokens de entrada no se entregan en consultas públicas de progreso.
 Hermes utiliza otra clave, con GET de `demoLicenses` y GET/POST de `demoRequests`;
 ese recurso no permite activar. Restrinja en el proxy el acceso público directo a `/api/3`:
 el navegador debe utilizar exclusivamente `/demo/api.php`.
+
+Las dos claves restringidas son **Portal DEMO** (`FS_DEMO_API_KEY` en el master)
+y **Hermes** (`SPIDER_DEMO_API_TOKEN` en el perfil privado del agente).
+`FS_API_KEY` es una tercera credencial opcional para acceso general a la API:
+el Core le concede acceso total. No se necesita para este flujo ni se utiliza
+como token del agente. Con `default.enable_api=true`, las claves restringidas
+funcionan sin definir `FS_API_KEY`.

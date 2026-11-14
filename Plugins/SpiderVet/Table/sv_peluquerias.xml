@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idempresa</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>nick</name>
+        <type>character varying(50)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>creado</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>actualizado</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idpaciente</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idrecepcion</name>
+        <type>integer</type>
+    </column>
+    <column>
+        <name>inicio</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>fin</name>
+        <type>timestamp</type>
+    </column>
+    <column>
+        <name>estado</name>
+        <type>character varying(150)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>responsable</name>
+        <type>character varying(150)</type>
+    </column>
+    <column>
+        <name>solicitado</name>
+        <type>text</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>indicacionesbano</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>observacionesingreso</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>realizado</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>incidencias</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>recomendaciones</name>
+        <type>text</type>
+    </column>
+    <constraint>
+        <name>sv_peluquerias_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>sv_peluquerias_empresa</name>
+        <type>FOREIGN KEY (idempresa) REFERENCES empresas (idempresa) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+    <constraint>
+        <name>sv_peluquerias_idpaciente</name>
+        <type>FOREIGN KEY (idpaciente) REFERENCES sv_pacientes (id) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+    <constraint>
+        <name>sv_peluquerias_idrecepcion</name>
+        <type>FOREIGN KEY (idrecepcion) REFERENCES sv_recepciones (id) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+    <constraint>
+        <name>sv_peluquerias_recepcion_unica</name>
+        <type>UNIQUE (idrecepcion)</type>
+    </constraint>
+</table>

@@ -24,6 +24,8 @@ use FacturaScripts\Core\Contract\ControllerInterface;
 use FacturaScripts\Core\DataSrc\Empresas;
 use FacturaScripts\Core\Html;
 use FacturaScripts\Core\Lib\MultiRequestProtection;
+use FacturaScripts\Core\Lib\Security\PasswordRecovery;
+use Throwable;
 use FacturaScripts\Core\Session;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Model\Empresa;
@@ -42,6 +44,14 @@ class Login implements ControllerInterface
 
     /** @var string */
     public $title = 'Login';
+
+    public $recoveryMessage = '';
+    public $recoveryError = '';
+    public $recoverySuccess = false;
+    public $recoveryReset = false;
+    public $recoveryUser = '';
+    public $recoveryToken = '';
+    public $recoveryRuc = '';
 
     public function __construct(string $className, string $url = '')
     {
@@ -66,11 +76,12 @@ class Login implements ControllerInterface
         $request = Request::createFromGlobals();
         $action = $request->request->get('action', $request->query->get('action', ''));
 
-        switch ($action) {
-            case 'change-password':
-                $this->changePasswordAction($request);
-                break;
+        if (in_array($action, ['recover-password', 'request-password-reset', 'reset-password', 'change-password'], true)) {
+            $this->recoveryAction($request, $action);
+            return;
+        }
 
+        switch ($action) {
             case 'login':
                 $this->loginAction($request);
                 break;
@@ -139,57 +150,63 @@ class Login implements ControllerInterface
         return $userCount >= self::MAX_INCIDENT_COUNT;
     }
 
-    private function changePasswordAction(Request $request): void
+    private function recoveryAction(Request $request, string $action): void
     {
-        if (false === $this->validateFormToken($request)) {
-            return;
+        // La recuperación debe funcionar también con cookies de una sesión anterior.
+        $protection = new MultiRequestProtection();
+        $protection->clearSeed();
+        header('Cache-Control: no-store');
+        header('Referrer-Policy: no-referrer');
+        $recoveryRequest = null;
+        $this->recoveryReset = $action === 'reset-password';
+        $this->recoveryRuc = (string)($_COOKIE['ruc'] ?? $_SERVER['HTTP_X_RUC'] ?? '');
+        $this->recoveryUser = (string)$request->request->get('recovery_user', $request->query->get('recovery_user', ''));
+        $this->recoveryToken = (string)$request->request->get('recovery_token', '');
+        if ($request->isMethod('POST') && in_array($action, ['request-password-reset', 'reset-password'], true)) {
+            $formToken = (string)$request->request->get('multireqtoken', '');
+            if (!$protection->validate($formToken) || $protection->tokenExist($formToken)) {
+                $this->recoveryError = 'La solicitud no es válida. Vuelve a intentarlo.';
+            } else {
+                try {
+                    $service = new PasswordRecovery();
+                    if ($action === 'request-password-reset') {
+                        $this->recoveryMessage = PasswordRecovery::MESSAGE;
+                        $recoveryRequest = (string)$request->request->get('identifier', '');
+                    } else {
+                        $password = (string)$request->request->get('password', '');
+                        $confirmation = (string)$request->request->get('confirmation', '');
+                        if (!PasswordRecovery::validPassword($password, $confirmation)) {
+                            $this->recoveryError = 'Las contraseñas deben coincidir y tener al menos 12 caracteres, hasta 72 bytes y ningún carácter nulo.';
+                        } elseif ($service->reset($this->recoveryUser, $this->recoveryToken, $password, $confirmation)) {
+                            $this->recoverySuccess = true;
+                            $this->recoveryToken = '';
+                            $this->recoveryMessage = 'Tu contraseña se ha actualizado. Ya puedes iniciar sesión.';
+                        } else {
+                            $this->recoveryError = PasswordRecovery::INVALID_LINK;
+                        }
+                    }
+                } catch (Throwable $error) {
+                    // Sin datos personales, contraseñas, tokens ni mensajes SMTP en el registro público.
+                    Tools::log('password-recovery')->error('No se pudo completar la recuperación de contraseña.');
+                    if ($action === 'reset-password') {
+                        $this->recoveryError = 'No se pudo cambiar la contraseña. Inténtalo de nuevo más tarde.';
+                    }
+                }
+            }
         }
-
-        $username = $request->request->get('fsNewUserPasswd');
-        if ($this->userHasManyIncidents(Session::getClientIp(), $username)) {
-            Tools::log()->warning('ip-banned');
-            return;
+        echo Html::render('Login/Recovery.html.twig', ['fsc' => $this]);
+        if ($recoveryRequest !== null) {
+            // La respuesta pública termina antes de buscar la cuenta o contactar SMTP.
+            // Así el tiempo de envío no revela si el usuario existe.
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+            try {
+                (new PasswordRecovery())->request($recoveryRequest, Session::getClientIp(), $this->recoveryRuc);
+            } catch (Throwable $error) {
+                Tools::log('password-recovery')->error('No se pudo enviar la recuperación de contraseña.');
+            }
         }
-
-        $dbPassword = $request->request->get('fsDbPasswd');
-        if ($dbPassword !== Tools::config('db_pass')) {
-            Tools::log()->warning('login-invalid-db-password');
-            $this->saveIncident(Session::getClientIp(), $username);
-            return;
-        }
-
-        $password = $request->request->get('fsNewPasswd');
-        $password2 = $request->request->get('fsNewPasswd2');
-        if (empty($username) || empty($password) || empty($password2)) {
-            Tools::log()->warning('login-empty-fields');
-            return;
-        }
-
-        if ($password !== $password2) {
-            Tools::log()->warning('different-passwords', ['%userNick%' => $username]);
-            return;
-        }
-
-        $user = new User();
-        if (false === $user->loadFromCode($username)) {
-            Tools::log()->warning('login-user-not-found');
-            $this->saveIncident(Session::getClientIp(), $username);
-            return;
-        }
-
-        if (false === $user->enabled) {
-            Tools::log()->warning('login-user-disabled');
-            return;
-        }
-
-        $user->setPassword($password);
-        if (false === $user->save()) {
-            Tools::log()->warning('login-user-not-saved');
-            $this->saveIncident(Session::getClientIp(), $username);
-            return;
-        }
-
-        Tools::log()->notice('login-password-changed');
     }
 
     private function validateFormToken(Request $request): bool

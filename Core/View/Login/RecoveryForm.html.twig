@@ -1,0 +1,44 @@
+{% if fsc.recoveryMessage %}<p class="notice" role="status">{{ fsc.recoveryMessage }}</p>{% endif %}
+{% if fsc.recoveryError %}<p class="error" role="alert">{{ fsc.recoveryError }}</p>{% endif %}
+{% if not fsc.recoverySuccess %}
+    {% if fsc.recoveryReset %}
+        <form action="{{ asset('login') }}" method="post">
+            {{ formToken() }}
+            <input type="hidden" name="action" value="reset-password">
+            <input type="hidden" name="recovery_ruc" value="{{ fsc.recoveryRuc }}">
+            <input type="hidden" name="recovery_user" value="{{ fsc.recoveryUser }}">
+            <input type="hidden" id="recovery-token" name="recovery_token" value="{{ fsc.recoveryToken }}">
+            <label for="password">Nueva contraseña</label>
+            <input id="password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="72" required>
+            <label for="confirmation">Repite la contraseña</label>
+            <input id="confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="72" required>
+            <p class="help">Usa al menos 12 caracteres y un máximo de 72 bytes.</p>
+            <button type="submit">Guardar contraseña</button>
+        </form>
+        <script>
+            const token = new URLSearchParams(location.hash.slice(1)).get('token');
+            if (token) document.getElementById('recovery-token').value = token;
+            history.replaceState(null, '', location.pathname + location.search);
+        </script>
+        <noscript><p>Activa JavaScript para abrir de forma segura el enlace de recuperación.</p></noscript>
+        <p><a href="{{ asset('login') }}?action=recover-password">Solicitar otro enlace</a></p>
+    {% else %}
+        <details open>
+            <summary>Recuperar por correo</summary>
+            <form action="{{ asset('login') }}" method="post">
+                {{ formToken() }}
+                <input type="hidden" name="action" value="request-password-reset">
+                <input type="hidden" name="recovery_ruc" value="{{ fsc.recoveryRuc }}">
+                <label for="identifier">Usuario o correo electrónico</label>
+                <input id="identifier" name="identifier" type="text" autocomplete="username" maxlength="100" required>
+                <p class="help">Enviaremos el enlace al correo registrado. Si tu correo está asociado a varios usuarios, utiliza tu nombre de usuario.</p>
+                <button type="submit">Enviar enlace de recuperación</button>
+            </form>
+        </details>
+        <details>
+            <summary>Contactar al administrador</summary>
+            <p>Comunícate con el administrador de tu empresa y solicita el restablecimiento de tu contraseña.</p>
+        </details>
+    {% endif %}
+{% endif %}
+<p><a href="{{ asset('login') }}">Volver al inicio de sesión</a></p>

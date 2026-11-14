@@ -1,0 +1,42 @@
+@page { size: A4 portrait; margin: 12mm; }
+* { box-sizing: border-box; }
+.sv-print-body { margin: 0; color: #172b35; background: #e8edf0; font: 10pt/1.45 Arial, sans-serif; }
+.sv-print-toolbar { display: flex; justify-content: space-between; gap: 1rem; max-width: 210mm; margin: 1rem auto; padding: 0 1rem; }
+.sv-print-toolbar a { color: #166b69; }
+.sv-print-toolbar button { border: 0; border-radius: 5px; padding: .7rem 1rem; background: #166b69; color: #fff; cursor: pointer; }
+.sv-print-document { background: white; max-width: 210mm; margin: 1rem auto; padding: 12mm; box-shadow: 0 2px 12px #ccd3d8; }
+.sv-print-heading { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 2px solid #166b69; padding-bottom: 4mm; margin-bottom: 5mm; }
+.sv-print-heading strong { font-size: 12pt; }
+.sv-print-logo { max-width: 22mm; max-height: 20mm; object-fit: contain; }
+.sv-print-brand { text-align: right; margin-left: auto; }
+h1 { font-size: 16pt; margin: 4mm 0; }
+h2 { font-size: 10.5pt; margin: 4mm 0 2mm; background: #eff5f4; border-left: 3px solid #166b69; padding: 2mm 3mm; break-after: avoid; }
+.sv-print-grid { display: flex; flex-wrap: wrap; }
+.sv-print-field { padding: 1.5mm 3mm; overflow-wrap: anywhere; }
+.sv-print-field strong { display: block; font-size: 8pt; color: #536a75; }
+.sv-print-field div, td { white-space: pre-wrap; overflow-wrap: anywhere; }
+.sv-print-width-2 { width: 16.666%; }.sv-print-width-3 { width: 25%; }.sv-print-width-4 { width: 33.333%; }
+.sv-print-width-5 { width: 41.666%; }.sv-print-width-6 { width: 50%; }.sv-print-width-8 { width: 66.666%; }.sv-print-width-12 { width: 100%; }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 9pt; }
+th, td { border: 1px solid #bbc9ce; padding: 2mm; vertical-align: top; }
+th { background: #f4f7f8; text-align: left; }
+thead { display: table-header-group; }
+.sv-print-record-heading { border-bottom: 1px solid #bbc9ce; }
+.sv-print-signatures { display: flex; gap: 12mm; margin: 18mm 0 7mm; break-inside: avoid; }
+.sv-print-signatures div { width: 50%; text-align: center; border-top: 1px solid #536a75; padding-top: 2mm; }
+.sv-print-meta { color: #536a75; font-size: 8pt; }
+.sv-print-grooming { margin-bottom: 10mm; }
+.sv-print-history-title { margin-top: 8mm; }
+@media print {
+    .sv-print-body { background: white; color: black; }
+    .sv-print-toolbar { display: none; }
+    .sv-print-document { margin: 0; padding: 0; max-width: none; box-shadow: none; }
+    .sv-print-new-page { break-before: page; }
+    h2, th { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .sv-print-field { min-width: 0; }
+    a { color: inherit; text-decoration: none; }
+}
+@media screen and (max-width: 600px) {
+    .sv-print-document { padding: 1rem; }
+    .sv-print-width-3, .sv-print-width-4, .sv-print-width-6, .sv-print-width-8 { width: 100%; }
+}

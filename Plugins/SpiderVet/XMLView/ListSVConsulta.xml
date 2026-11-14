@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view>
+    <columns>
+        <column name="Fecha y hora" numcolumns="4" order="100">
+            <widget type="datetime" fieldname="fecha" />
+        </column>
+        <column name="Paciente" numcolumns="6" order="110">
+            <widget type="autocomplete" fieldname="idpaciente">
+                <values source="sv_pacientes" fieldcode="id" fieldtitle="nombre" />
+            </widget>
+        </column>
+        <column name="Veterinario/a" numcolumns="4" order="120">
+            <widget type="text" fieldname="veterinario" />
+        </column>
+        <column name="Tipo de consulta" numcolumns="4" order="130">
+            <widget type="select" fieldname="tipo">
+                <values title="Primera vez">primera</values>
+                <values title="Control">control</values>
+                <values title="Urgencia">urgencia</values>
+            </widget>
+        </column>
+        <column name="Estado" numcolumns="2" order="140">
+            <widget type="select" fieldname="estado">
+                <values title="En atención">borrador</values>
+                <values title="Terminada">terminada</values>
+            </widget>
+        </column>
+        <column name="Motivo de consulta" numcolumns="12" order="150">
+            <widget type="textarea" fieldname="motivo" rows="3" />
+        </column>
+        <column name="Diagnóstico definitivo" numcolumns="12" order="160">
+            <widget type="textarea" fieldname="diagnosticodefinitivo" rows="3" />
+        </column>
+        <column name="Próximo control (fecha y hora)" numcolumns="4" order="170">
+            <widget type="datetime" fieldname="proximocontrol" />
+        </column>
+    </columns>
+    <rows>
+        <row type="status" fieldname="estado">
+            <option color="warning" title="En atención">borrador</option>
+            <option color="success" title="Terminada">terminada</option>
+        </row>
+    </rows>
+</view>

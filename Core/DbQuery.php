@@ -156,6 +156,16 @@ final class DbQuery
         return self::db()->selectLimit($this->sql(), $this->limit, $this->offset);
     }
 
+    /** Lectura proyectada vigente, con bloqueo hasta terminar la transacción. */
+    public function getForUpdate(): array
+    {
+        if (!self::db()->inTransaction()) {
+            throw new Exception('La lectura con bloqueo requiere una transacción.');
+        }
+        $limit = (int)$this->limit > 0 ? ' LIMIT ' . (int)$this->limit . ' OFFSET ' . (int)$this->offset : '';
+        return self::db()->select($this->sql() . $limit . ' FOR UPDATE');
+    }
+
     public function groupBy(string $fields): self
     {
         $list = [];

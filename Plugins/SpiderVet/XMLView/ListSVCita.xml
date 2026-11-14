@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view>
+    <columns>
+        <column name="Inicio" numcolumns="4" order="100">
+            <widget type="datetime" fieldname="inicio" />
+        </column>
+        <column name="Fin" numcolumns="4" order="110">
+            <widget type="datetime" fieldname="fin" />
+        </column>
+        <column name="Paciente" numcolumns="6" order="120">
+            <widget type="autocomplete" fieldname="idpaciente">
+                <values source="sv_pacientes" fieldcode="id" fieldtitle="nombre" />
+            </widget>
+        </column>
+        <column name="Servicio" numcolumns="6" order="130">
+            <widget type="select" fieldname="servicio">
+                <values title="Veterinaria">veterinaria</values>
+                <values title="Peluquería">peluqueria</values>
+                <values title="Veterinaria y peluquería">ambos</values>
+            </widget>
+        </column>
+        <column name="Profesional / encargado" numcolumns="4" order="140">
+            <widget type="select" fieldname="responsable">
+                <values source="users" fieldcode="nick" fieldtitle="nick" />
+            </widget>
+        </column>
+        <column name="Estado" numcolumns="4" order="150">
+            <widget type="select" fieldname="estado">
+                <values title="Programada">programada</values>
+                <values title="Confirmada">confirmada</values>
+                <values title="Recibida">recibida</values>
+                <values title="Completada">completada</values>
+                <values title="Cancelada">cancelada</values>
+                <values title="No asistió">no_asistio</values>
+            </widget>
+        </column>
+        <column name="Motivo" numcolumns="8" order="160">
+            <widget type="textarea" fieldname="motivo" rows="3" />
+        </column>
+    </columns>
+    <rows>
+        <row type="status" fieldname="estado">
+            <option color="primary" title="Programada">programada</option>
+            <option color="primary" title="Confirmada">confirmada</option>
+            <option color="info" title="Recibida">recibida</option>
+            <option color="success" title="Completada">completada</option>
+            <option color="secondary" title="Cancelada">cancelada</option>
+            <option color="secondary" title="No asistió">no_asistio</option>
+        </row>
+    </rows>
+</view>

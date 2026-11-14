@@ -236,8 +236,23 @@
         return false;
     }
 
+    function salesLinePriceIsEditable(id) {
+        const price = document.forms['salesForm']['pvpunitario_' + id];
+        return price && !price.disabled && !price.readOnly;
+    }
+
     function salesLineTotalWithTaxes(id) {
-        const total = parseFloat(prompt('{{ trans('total-with-taxes') }}').replace(',', '.')) || 0;
+        // Subtotal y Neto también modifican el precio unitario: respetar su bloqueo.
+        if (!salesLinePriceIsEditable(id)) {
+            return false;
+        }
+
+        const value = prompt('{{ trans('total-with-taxes') }}');
+        if (value === null) {
+            return false;
+        }
+
+        const total = parseFloat(value.replace(',', '.')) || 0;
         const dtopor = parseFloat(document.forms['salesForm']['dtopor_' + id].value) || 0;
         const dtopor2 = parseFloat(document.forms['salesForm']['dtopor2_' + id].value) || 0;
         const iva = parseFloat(document.forms['salesForm']['iva_' + id].value) || 0;
@@ -257,7 +272,16 @@
     }
 
     function salesLineTotalWithoutTaxes(id) {
-        const total = parseFloat(prompt('{{ trans('net') }}').replace(',', '.')) || 0;
+        if (!salesLinePriceIsEditable(id)) {
+            return false;
+        }
+
+        const value = prompt('{{ trans('net') }}');
+        if (value === null) {
+            return false;
+        }
+
+        const total = parseFloat(value.replace(',', '.')) || 0;
         const dtopor = parseFloat(document.forms['salesForm']['dtopor_' + id].value) || 0;
         const dtopor2 = parseFloat(document.forms['salesForm']['dtopor2_' + id].value) || 0;
         const cantidad = parseFloat(document.forms['salesForm']['cantidad_' + id].value) || 0;

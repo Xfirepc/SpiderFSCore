@@ -19,10 +19,13 @@
 
 namespace FacturaScripts\Core\Lib;
 
+use FacturaScripts\Core\Base\DataBase;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Model\Base\BusinessDocument;
+use FacturaScripts\Core\Model\Base\ModelCore;
 use FacturaScripts\Core\Model\SecuenciaDocumento;
 use FacturaScripts\Dinamic\Model\SecuenciaDocumento as DinSecuenciaDocumento;
+use RuntimeException;
 
 /**
  * Description of BusinessDocumentCode
@@ -71,7 +74,14 @@ class BusinessDocumentCode
             new DataBaseWhere('idempresa', $document->idempresa),
             new DataBaseWhere('tipodoc', $document->modelClassName())
         ];
-        foreach ($sequence->all($where) as $seq) {
+        $database = new DataBase();
+        $sequences = DocumentNumberingSchema::available($document) && $database->inTransaction()
+            ? $sequence::allForUpdate($where)
+            : $sequence->all($where);
+        if ($database->lastError() !== '') {
+            throw new RuntimeException('No se pudo leer la secuencia del documento.');
+        }
+        foreach ($sequences as $seq) {
             if (empty($seq->codejercicio)) {
                 // sequence for all exercises
                 $selectedSequence = $seq;
@@ -94,7 +104,9 @@ class BusinessDocumentCode
             $selectedSequence->longnumero = $long;
             $selectedSequence->tipodoc = $document->modelClassName();
             $selectedSequence->usarhuecos = ('FacturaCliente' === $document->modelClassName());
-            $selectedSequence->save();
+            if (!$selectedSequence->save()) {
+                throw new RuntimeException('No se pudo crear la secuencia del documento.');
+            }
         }
 
         return $selectedSequence;
@@ -143,9 +155,7 @@ class BusinessDocumentCode
                     // hole found
                     $document->fecha = $preDate;
                     $document->hora = $preHour;
-                    $sequence->disablePatternTest(true);
-                    $sequence->save();
-                    $sequence->disablePatternTest(false);
+                    self::saveSequence($sequence);
 
                     return (string)$expectedNumber;
                 }
@@ -165,9 +175,7 @@ class BusinessDocumentCode
                 // the gap is in the first positions of the range
                 $document->fecha = $preDate;
                 $document->hora = $preHour;
-                $sequence->disablePatternTest(true);
-                $sequence->save();
-                $sequence->disablePatternTest(false);
+                self::saveSequence($sequence);
 
                 return (string)$expectedNumber;
             }
@@ -177,30 +185,59 @@ class BusinessDocumentCode
 
         // update sequence
         $sequence->numero++;
-        $sequence->disablePatternTest(true);
-        $sequence->save();
-        $sequence->disablePatternTest(false);
+        self::saveSequence($sequence);
 
         return (string)$newNumber;
     }
 
     protected static function getPrevious(SecuenciaDocumento $sequence, BusinessDocument $document): array
     {
-        $where = [
-            new DataBaseWhere('codserie', $sequence->codserie),
-            new DataBaseWhere('idempresa', $sequence->idempresa)
-        ];
+        // El constructor de documentos completos no interviene en esta lectura.
+        // El ORM proyecta solo los cuatro valores que utiliza getNewNumber().
+        $query = $document::table()->select('numero,codejercicio,fecha,hora')
+            ->whereEq('codserie', $sequence->codserie)
+            ->whereEq('idempresa', $sequence->idempresa);
         if ($sequence->codejercicio) {
-            $where[] = new DataBaseWhere('codejercicio', $sequence->codejercicio);
+            $query->whereEq('codejercicio', $sequence->codejercicio);
         } else {
-            $other = implode(',', static::getOtherExercises($sequence));
+            $other = static::getOtherExercises($sequence);
             if (!empty($other)) {
-                $where[] = new DataBaseWhere('codejercicio', $other, 'NOT IN');
+                $query->whereNotIn('codejercicio', $other);
             }
         }
-        $orderBy = strtolower(FS_DB_TYPE) == 'postgresql' ?
-            ['CAST(numero as integer)' => 'DESC'] :
-            ['CAST(numero as unsigned)' => 'DESC'];
-        return $document->all($where, $orderBy, 0, self::GAP_LIMIT);
+        $optimized = DocumentNumberingSchema::available($document);
+        if ($optimized) {
+            $query->orderBy(DocumentNumberingSchema::COLUMN, 'DESC');
+        } else {
+            // Conserva el orden anterior mientras no se haya migrado este tenant.
+            $cast = strtolower(FS_DB_TYPE) === 'postgresql' ? 'INTEGER' : 'UNSIGNED';
+            $query->orderBy = ['CAST(numero AS ' . $cast . ') DESC'];
+        }
+        $query->limit($sequence->usarhuecos ? self::GAP_LIMIT : 1);
+        $database = new DataBase();
+        // La lectura vigente evita reutilizar el snapshot de otra caja. La
+        // secuencia se bloquea primero y permanece dentro de la misma transacción.
+        $rows = $optimized && $database->inTransaction() ? $query->getForUpdate() : $query->get();
+        if ($database->lastError() !== '') {
+            throw new RuntimeException('No se pudo comprobar la numeración del documento.');
+        }
+        $previous = [];
+        foreach ($rows as $row) {
+            $row['fecha'] = empty($row['fecha']) ? null : date(ModelCore::DATE_STYLE, strtotime($row['fecha']));
+            $previous[] = (object)$row;
+        }
+        return $previous;
+    }
+
+    private static function saveSequence(SecuenciaDocumento $sequence): void
+    {
+        $sequence->disablePatternTest(true);
+        try {
+            if (!$sequence->save()) {
+                throw new RuntimeException('No se pudo actualizar la secuencia del documento.');
+            }
+        } finally {
+            $sequence->disablePatternTest(false);
+        }
     }
 }

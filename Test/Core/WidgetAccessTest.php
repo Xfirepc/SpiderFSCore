@@ -23,6 +23,10 @@ final class WidgetAccessTest extends TestCase
         $twig->addFunction(new TwigFunction('asset', static function (string $path): string {
             return '/' . $path;
         }));
+        $twig->addFunction(new TwigFunction('constant', static function (string $name): string {
+            self::assertSame('FS_DB_NAME', $name);
+            return 'widget-access-isolated-test';
+        }));
         $markers = ['notices' => 'sb-notices.js', 'payment' => 'sb-payment-notices.js', 'agent' => 'chat.js'];
         foreach ($markers as $template => $marker) {
             $html = $twig->render($template, ['fsc' => (object)['user' => $user]]);
@@ -49,6 +53,7 @@ final class WidgetAccessTest extends TestCase
 final class WidgetAccessUser
 {
     public $admin;
+    public $nick = 'widget-test';
     private $allowed;
 
     public function __construct(bool $admin, array $allowed)

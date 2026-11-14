@@ -1,0 +1,81 @@
+{% import 'SVPrintFields.html.twig' as fields %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="robots" content="noindex, nofollow"/>
+    <title>{{ fsc.single ? 'Consulta veterinaria' : 'Ficha del paciente' }} · {{ fixHtml(fsc.patient.nombre) }} · {{ fsc.patient.historia }}</title>
+    <link rel="stylesheet" href="{{ asset('Dinamic/Assets/CSS/SpiderVetPrint.css') }}"/>
+</head>
+<body class="sv-print-body">
+    <nav class="sv-print-toolbar" aria-label="Opciones de impresión">
+        <a href="{{ asset(fsc.patient.url('edit')) }}">Volver a la ficha</a>
+        <button id="sv-print-button" type="button">Imprimir / guardar PDF</button>
+    </nav>
+    <main class="sv-print-document">
+        <header class="sv-print-heading">
+            {% if fsc.empresa.idlogo %}<img class="sv-print-logo" src="{{ asset(attachedFile(fsc.empresa.idlogo).url('download')) }}" alt="{{ fixHtml(fsc.empresa.nombre) }}"/>{% endif %}
+            <div><strong>{{ fixHtml(fsc.empresa.nombre) }}</strong><div>{{ fixHtml(fsc.empresa.direccion|default('')) }}</div><div>{{ fixHtml(fsc.empresa.telefono1|default('')) }} {{ fixHtml(fsc.empresa.email|default('')) }}</div></div>
+            <div class="sv-print-brand">SpiderVet<br><strong>{{ fsc.patient.historia }}</strong></div>
+        </header>
+        {% if not fsc.single %}
+            <h1>Ficha del paciente · {{ fixHtml(fsc.patient.nombre) }}</h1>
+            {{ fields.tutor(fsc.context.tutor) }}
+            {% for group in fsc.definition('SVPaciente').groups %}
+                {% if group.key != 'identificacion' %}{{ fields.group(group.key == 'paciente' ? '3. Datos del paciente' : group.title, group.fields, fsc.patient, fsc) }}{% endif %}
+            {% endfor %}
+            <p class="sv-print-meta">Estado del paciente: {{ fsc.patient.activo ? 'Activo' : 'Inactivo' }} · Registro: {{ fsc.patient.creado }}</p>
+            <h2 class="sv-print-history-title">Historial clínico · {{ fsc.consultations|length }} consultas</h2>
+            {% if not fsc.consultations %}<p>No hay consultas disponibles para imprimir.</p>{% endif %}
+        {% endif %}
+        {% for consultation in fsc.consultations %}
+            {% set context = fsc.consultationContext(consultation) %}
+            <article class="sv-print-consultation {{ not fsc.single or not loop.first ? 'sv-print-new-page' : '' }}">
+                <div class="sv-print-record-heading"><h1>Ficha de consulta veterinaria</h1><p>Historia clínica de pequeños animales · {{ context.patient.historia|default(fsc.patient.historia) }}<br>Paciente: {{ fixHtml(context.patient.nombre|default(fsc.patient.nombre)) }} · Consulta #{{ consultation.id }} · {{ consultation.estado == 'terminada' ? 'Terminada' : 'En atención' }}</p></div>
+                {% for group in fsc.definition('SVConsulta').groups %}
+                    {% if group.key == 'consulta' %}
+                        {{ fields.group(group.title, group.fields, consultation, fsc) }}
+                        {{ fields.tutor(context.tutor) }}
+                        {% for patientGroup in fsc.definition('SVPaciente').groups %}{% if patientGroup.key == 'paciente' %}{{ fields.group('3. Datos del paciente', patientGroup.fields, context.patient, fsc) }}{% endif %}{% endfor %}
+                    {% elseif group.key == 'seguimiento' %}
+                        <section class="sv-print-section"><h2>7. Pruebas complementarias</h2>
+                            <table><thead><tr><th>Examen / procedimiento</th><th>Resultado / hallazgo</th><th>Fecha</th></tr></thead><tbody>
+                            {% for test in fsc.clinicalRows(consultation, false) %}<tr><td>{{ fixHtml(test.examen) }}</td><td>{{ fixHtml(test.resultado|default('—')) }}</td><td>{{ test.fecha }}</td></tr>{% else %}<tr><td colspan="3">Sin pruebas disponibles.</td></tr>{% endfor %}
+                            </tbody></table>
+                        </section>
+                        <section class="sv-print-section"><h2>8. Tratamiento y procedimientos</h2>
+                            <table><thead><tr><th>Medicamento / procedimiento</th><th>Dosis / concentración</th><th>Vía / frecuencia</th><th>Duración</th></tr></thead><tbody>
+                            {% for treatment in fsc.clinicalRows(consultation, true) %}<tr><td>{{ fixHtml(treatment.medicamento) }}</td><td>{{ fixHtml(treatment.dosis|default('—')) }}</td><td>{{ fixHtml(treatment.viafrecuencia|default('—')) }}</td><td>{{ fixHtml(treatment.duracion|default('—')) }}</td></tr>{% else %}<tr><td colspan="4">Sin tratamientos disponibles.</td></tr>{% endfor %}
+                            </tbody></table>
+                        </section>
+                        {{ fields.group(group.title, group.fields, consultation, fsc) }}
+                    {% elseif group.key == 'conformidad' %}
+                        {{ fields.group(group.title, group.fields, consultation, fsc) }}
+                        <p>Declaro que la información proporcionada es verdadera y que he recibido explicación sobre los hallazgos, el plan diagnóstico, el tratamiento y las recomendaciones para mi mascota.</p>
+                        <div class="sv-print-signatures"><div>Firma del responsable / tutor</div><div>Firma y sello del médico veterinario</div></div>
+                    {% elseif group.key != 'paciente' %}
+                        {{ fields.group(group.title, group.fields, consultation, fsc) }}
+                    {% endif %}
+                {% endfor %}
+                <p class="sv-print-meta">Registrada: {{ consultation.creado }} · Última actualización: {{ consultation.actualizado }}</p>
+            </article>
+        {% endfor %}
+        {% if not fsc.single %}
+            <section class="sv-print-new-page">
+                <h1>Historial de peluquería · {{ fixHtml(fsc.patient.nombre) }}</h1>
+                {% for grooming in fsc.groomings %}
+                    <article class="sv-print-grooming">
+                        <h2>Atención #{{ grooming.id }} · {{ grooming.inicio }} · {{ grooming.estado == 'terminada' ? 'Terminada' : 'En atención' }}</h2>
+                        {% for group in fsc.definition('SVPeluqueria').groups %}
+                            {% set visibleFields = group.fields|filter(field => field.key not in ['idpaciente', 'idrecepcion']) %}
+                            {{ fields.group(group.title, visibleFields, grooming, fsc) }}
+                        {% endfor %}
+                    </article>
+                {% else %}<p>No hay atenciones de peluquería disponibles para imprimir.</p>{% endfor %}
+            </section>
+        {% endif %}
+        <footer class="sv-print-meta">{{ fixHtml(fsc.empresa.nombre) }} · SpiderVet · {{ fsc.patient.historia }}</footer>
+    </main>
+    <script src="{{ asset('Dinamic/Assets/JS/SpiderVet.js') }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view>
+    <columns>
+        <column name="Medicamento / procedimiento" numcolumns="12" order="100">
+            <widget type="textarea" fieldname="medicamento" rows="3" />
+        </column>
+        <column name="Dosis / concentración" numcolumns="4" order="110">
+            <widget type="textarea" fieldname="dosis" rows="3" />
+        </column>
+        <column name="Vía / frecuencia" numcolumns="4" order="120">
+            <widget type="textarea" fieldname="viafrecuencia" rows="3" />
+        </column>
+        <column name="Duración" numcolumns="4" order="130">
+            <widget type="textarea" fieldname="duracion" rows="3" />
+        </column>
+    </columns>
+</view>

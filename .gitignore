@@ -4,7 +4,8 @@
 /doc/
 /MyFiles/
 /node_modules/
-/Plugins/
+/Plugins/*
+!/Plugins/SpiderVet/
 /vendor/
 .DS_Store
 .htaccess
@@ -33,3 +34,7 @@ error.log
 .history
 main_spidercodeapp-cron.err.log
 supervisord.pid
+
+# Archivos generados por las pruebas de Python.
+__pycache__/
+*.py[cod]

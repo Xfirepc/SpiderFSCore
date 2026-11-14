@@ -8,6 +8,10 @@ function getConfigFile()
     }
 
     $ruc = $selection['value'];
+    if ($ruc === '' && $selection['source'] === 'recovery') {
+        persistRecoverySelection($selection);
+        return __DIR__ . '/config.php';
+    }
     if (isHostDatabaseSelector($ruc)) {
         // La cookie con el nombre de la BD host es un residuo del BFF.
         // La cookie con el RUC de la empresa host debe conservarse: el login
@@ -15,6 +19,7 @@ function getConfigFile()
         if ($selection['source'] === 'cookie' && !isHostCompanySelector($ruc)) {
             clearTenantSelectorCookie();
         }
+        persistRecoverySelection($selection);
         return __DIR__ . '/config.php';
     }
 
@@ -38,7 +43,29 @@ function getConfigFile()
     }
 
     enforceActiveTenant($ruc);
+    persistRecoverySelection($selection);
     return $configPath;
+}
+
+/** Guardar el selector solo después de comprobar la instalación. */
+function persistRecoverySelection(array $selection): void
+{
+    if ($selection['source'] !== 'recovery') {
+        return;
+    }
+    $ruc = $selection['value'];
+    if ($ruc === '') {
+        unset($_COOKIE['ruc']);
+    } else {
+        $_COOKIE['ruc'] = $ruc;
+    }
+    setcookie('ruc', $ruc, [
+        'expires' => $ruc === '' ? time() - 3600 : time() + 31536000,
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 
 function getTenantSelector()
@@ -55,6 +82,17 @@ function getTenantSelector()
  */
 function getTenantSelection()
 {
+    // Únicamente el flujo de recuperación puede seleccionar su empresa desde el enlace.
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+    $action = $_POST['action'] ?? $_GET['action'] ?? '';
+    $recoveryRuc = $_POST['recovery_ruc'] ?? $_GET['recovery_ruc'] ?? null;
+    if (is_string($path) && preg_match('~/login$~', $path)
+        && is_string($action) && in_array($action, ['recover-password', 'request-password-reset', 'reset-password'], true)
+        && is_string($recoveryRuc)) {
+        // getConfigFile() comprueba formato, existencia y estado antes de cargar la configuración.
+        return ['source' => 'recovery', 'value' => trim($recoveryRuc)];
+    }
+
     if (array_key_exists('ruc', $_COOKIE)) {
         return [
             'source' => 'cookie',

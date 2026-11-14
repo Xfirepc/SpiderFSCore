@@ -24,6 +24,7 @@ use FacturaScripts\Core\Base\DataBase;
 use FacturaScripts\Core\Base\DataBase\DataBaseQueries;
 use FacturaScripts\Core\Base\PluginDeploy;
 use FacturaScripts\Core\Lib\Inventory\InventorySchemaMigration;
+use FacturaScripts\Core\Lib\MysqlTableIndexes;
 use FacturaScripts\Core\Lib\SchemaCheckLock;
 use FacturaScripts\Core\Lib\TableSchemaCache;
 
@@ -76,6 +77,9 @@ final class DbUpdater
 
         $sql = self::sqlTool()->sqlCreateTable($tableName, $structure['columns'], $structure['constraints'] ?? []) . $sqlAfter;
         if (self::db()->exec($sql)) {
+            if (self::ensureIndexes($tableName, $structure) === null) {
+                return false;
+            }
             self::save($tableName);
 
             Tools::log()->debug('table-checked', ['%tableName%' => $tableName]);
@@ -177,6 +181,8 @@ final class DbUpdater
             $structure['columns'][$item['name']] = $item;
         }
 
+        $structure['indexes'] = MysqlTableIndexes::readXml($xml);
+
         if (isset($xml->constraint)) {
             foreach ($xml->constraint as $col) {
                 $key = (string)$col->name;
@@ -245,22 +251,29 @@ final class DbUpdater
         }
         $sql = self::compareColumns($tableName, $structure['columns'], $dbCols) .
             self::compareConstraints($tableName, $structure['constraints'], $dbCons);
-        if (!empty($sql)) {
-            if (false === self::db()->exec($sql)) {
-                // Mantener pendiente una actualización fallida para reintentar
-                // al cargar el modelo; la tabla aún puede estar incompleta.
-                return false;
-            }
-            self::save($tableName);
-
-            Tools::log()->debug('table-checked', ['%tableName%' => $tableName]);
-            return true;
+        if (!empty($sql) && false === self::db()->exec($sql)) {
+            // Una actualización fallida debe poder reintentarse al cargar el modelo.
+            return false;
+        }
+        $indexesChanged = self::ensureIndexes($tableName, $structure);
+        if ($indexesChanged === null) {
+            return false;
         }
 
         self::save($tableName);
 
         Tools::log()->debug('table-checked', ['%tableName%' => $tableName]);
-        return false;
+        return !empty($sql) || $indexesChanged;
+    }
+
+    private static function ensureIndexes(string $tableName, array $structure): ?bool
+    {
+        try {
+            return (new MysqlTableIndexes(self::db()))->ensure($tableName, $structure['indexes'] ?? []);
+        } catch (\RuntimeException $error) {
+            Tools::log()->error($error->getMessage());
+            return null;
+        }
     }
 
     private static function db(): DataBase

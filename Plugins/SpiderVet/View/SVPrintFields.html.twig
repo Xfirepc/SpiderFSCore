@@ -1,0 +1,25 @@
+{% macro group(title, fields, data, fsc) %}
+    <section class="sv-print-section">
+        <h2>{{ title }}</h2>
+        <div class="sv-print-grid">
+            {% for field in fields %}
+                {% set value = attribute(data, field.key) is defined ? attribute(data, field.key) : null %}
+                <div class="sv-print-field sv-print-width-{{ field.width }}">
+                    <strong>{{ field.label }}</strong>
+                    <div>{{ fsc.formatField(value, field) }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+{% endmacro %}
+
+{% macro tutor(tutor) %}
+    <section class="sv-print-section">
+        <h2>2. Responsable / tutor</h2>
+        <div class="sv-print-grid">
+            {% for field, label in {'nombre':'Nombres y apellidos','documento':'C.I. / Pasaporte','telefono':'Teléfono / WhatsApp','correo':'Correo','direccion':'Dirección','ciudad':'Sector / Ciudad'} %}
+                <div class="sv-print-field sv-print-width-6"><strong>{{ label }}</strong><div>{{ fixHtml(tutor[field]|default('—')) }}</div></div>
+            {% endfor %}
+        </div>
+    </section>
+{% endmacro %}

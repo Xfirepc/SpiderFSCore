@@ -42,6 +42,18 @@ portal. Todos los demás recursos, PUT, PATCH y DELETE quedan deshabilitados.
 La [guía de Hermes](../Plugins/SpiderBuilder/Doc/Hermes.md) justifica la matriz
 completa, la pertenencia por contacto y la idempotencia.
 
+Las dos claves de este flujo son **Hermes** y **Portal DEMO**. El token de Hermes
+se guarda en `SPIDER_DEMO_API_TOKEN`, en su perfil privado; el del portal se guarda
+en `FS_DEMO_API_KEY`, en el `config.php` del master. Ambos corresponden a claves
+API registradas y restringidas en el master.
+
+`FS_API_KEY` es otra credencial: la clave general opcional de FacturaScripts.
+El Core concede acceso total al token que coincide con ella, antes de buscarlo
+en las claves registradas; sus permisos no se limitan mediante una regla de la
+base de datos. También permite acceder a la API aunque `default.enable_api`
+esté desactivado. No se requiere definirla para el portal ni para Hermes:
+`default.enable_api=true` permite utilizar sus claves restringidas.
+
 ## Configuración requerida
 
 En **SpiderBuilder → APIs → Aprovisionamiento DEMO** solo se configura:
@@ -58,13 +70,19 @@ define('FS_DEMO_API_KEY', 'token-exclusivo-del-portal-demo');
 define('FS_INTERNAL_URI', 'http://main_spidercode_nginx');
 ```
 
-Habilitar la API desde `/EditSettings` (`default.enable_api=true`) y crear la
-clave del portal con GET en `demoLicenses` y GET/POST en `demoRegistrations`,
-sin acceso total ni otros recursos. `FS_DEMO_API_KEY` autentica las llamadas
-internas del BFF; debe ser distinta de la clave Hermes y de `FS_API_KEY`, si
-esta última existe para otros usos. El portal responde 503 cuando falta la
-constante o contiene la clave general: no utiliza una credencial administrativa
-como alternativa. Configurar esa constante antes de desplegar el portal nuevo.
+La preparación DEMO al reconstruir SpiderBuilder desde `/AdminPlugins` en el
+master habilita la API (`default.enable_api=true`) y, si falta `FS_DEMO_API_KEY`,
+crea la clave del portal y escribe esa constante. Si ya está definida, exige
+una clave registrada, habilitada, sin acceso total y asociada a un usuario
+técnico habilitado sin administración. Ajusta sus reglas a GET de `demoLicenses`
+y GET/POST de `demoRegistrations`, sin otros recursos ni métodos. Comprobar que
+la preparación terminó correctamente antes de utilizar el portal.
+
+`FS_DEMO_API_KEY` autentica las llamadas internas del BFF; debe ser distinta de
+la clave Hermes y de `FS_API_KEY`, si esta última existe para otros usos. Definir
+la constante manualmente no crea el registro de la clave ni sus permisos.
+El portal responde 503 cuando falta la configuración requerida o contiene la
+clave general: no utiliza una credencial administrativa como alternativa.
 `FS_INTERNAL_URI` determina el origen privado de `/api/3`; no se obtiene de las
 cabeceras del navegador y puede incluir el puerto o path interno de la aplicación.
 
@@ -80,8 +98,11 @@ los tenants. Las URLs se generan automáticamente desde `default.site_url`:
 
 - Activación: `https://tu-dominio.com/demo/index.php`.
 - Acceso: `https://tu-dominio.com/login?action=check-ruc&ruc=...`.
-- API interna: `https://tu-dominio.com/api/3`.
-- Host: la base actual `FS_DB_NAME`, que debe ser la base host.
+
+La API interna del BFF se obtiene de `FS_INTERNAL_URI` añadiendo `/api/3`,
+independientemente de `default.site_url`. `X-RUC` selecciona la base actual
+`FS_DB_NAME`, que debe ser la base host. Hermes usa su propia URL HTTPS
+alcanzable desde su servidor, no necesariamente el origen interno del BFF.
 
 El BFF lee la clave solo en el servidor y llama a esta misma instalación usando
 `X-RUC` y `X-Auth-Token`. El control principal de tráfico/antiabuso se realiza

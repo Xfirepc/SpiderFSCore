@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<view>
+    <columns>
+        <group name="tratamiento" title="8. Tratamiento y procedimientos" numcolumns="12">
+            <column name="Consulta" numcolumns="4" order="100">
+                <widget type="autocomplete" fieldname="idconsulta" required="true" onclick="EditSVConsulta">
+                    <values source="sv_consultas" fieldcode="id" fieldtitle="motivo" />
+                </widget>
+            </column>
+            <column name="Medicamento / procedimiento" numcolumns="12" order="110">
+                <widget type="textarea" fieldname="medicamento" required="true" rows="3" />
+            </column>
+            <column name="Dosis / concentración" numcolumns="4" order="120">
+                <widget type="textarea" fieldname="dosis" rows="3" />
+            </column>
+            <column name="Vía / frecuencia" numcolumns="4" order="130">
+                <widget type="textarea" fieldname="viafrecuencia" rows="3" />
+            </column>
+            <column name="Duración" numcolumns="4" order="140">
+                <widget type="textarea" fieldname="duracion" rows="3" />
+            </column>
+        </group>
+    </columns>
+</view>

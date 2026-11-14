@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idempresa</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>nick</name>
+        <type>character varying(50)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>creado</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>actualizado</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idpaciente</name>
+        <type>integer</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idrecepcion</name>
+        <type>integer</type>
+    </column>
+    <column>
+        <name>estado</name>
+        <type>character varying(150)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>fecha</name>
+        <type>timestamp</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>tipo</name>
+        <type>character varying(150)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>veterinario</name>
+        <type>character varying(120)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>motivo</name>
+        <type>text</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>historiaproblema</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>vacunacion</name>
+        <type>character varying(150)</type>
+    </column>
+    <column>
+        <name>ultimavacuna</name>
+        <type>date</type>
+    </column>
+    <column>
+        <name>desparasitacion</name>
+        <type>character varying(150)</type>
+    </column>
+    <column>
+        <name>ultimadesparasitacion</name>
+        <type>date</type>
+    </column>
+    <column>
+        <name>alimentacion</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>alergias</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>medicamentos</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>antecedentes</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>temperatura</name>
+        <type>double precision</type>
+    </column>
+    <column>
+        <name>frecuenciacardiaca</name>
+        <type>double precision</type>
+    </column>
+    <column>
+        <name>frecuenciarespiratoria</name>
+        <type>double precision</type>
+    </column>
+    <column>
+        <name>peso</name>
+        <type>double precision</type>
+    </column>
+    <column>
+        <name>mucosas</name>
+        <type>character varying(150)</type>
+    </column>
+    <column>
+        <name>tllc</name>
+        <type>double precision</type>
+    </column>
+    <column>
+        <name>hidratacion</name>
+        <type>double precision</type>
+    </column>
+    <column>
+        <name>bcs</name>
+        <type>double precision</type>
+    </column>
+    <column>
+        <name>estadogeneral</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>pielpelaje</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>ojosoidosboca</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>respiratorio</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>cardiovascular</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>digestivo</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>urinariogenital</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>neurologico</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>problemas</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>diagnosticopresuntivo</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>diagnosticodefinitivo</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>cuidados</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>proximocontrol</name>
+        <type>timestamp</type>
+    </column>
+    <column>
+        <name>ayuno</name>
+        <type>character varying(150)</type>
+    </column>
+    <column>
+        <name>alarmas</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>llamadaseguimiento</name>
+        <type>character varying(150)</type>
+    </column>
+    <column>
+        <name>fechaseguimiento</name>
+        <type>date</type>
+    </column>
+    <column>
+        <name>conformidad</name>
+        <type>character varying(150)</type>
+    </column>
+    <column>
+        <name>notasconformidad</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>fichapaciente</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>fichatutor</name>
+        <type>text</type>
+    </column>
+    <constraint>
+        <name>sv_consultas_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>sv_consultas_empresa</name>
+        <type>FOREIGN KEY (idempresa) REFERENCES empresas (idempresa) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+    <constraint>
+        <name>sv_consultas_idpaciente</name>
+        <type>FOREIGN KEY (idpaciente) REFERENCES sv_pacientes (id) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+    <constraint>
+        <name>sv_consultas_idrecepcion</name>
+        <type>FOREIGN KEY (idrecepcion) REFERENCES sv_recepciones (id) ON DELETE RESTRICT ON UPDATE CASCADE</type>
+    </constraint>
+    <constraint>
+        <name>sv_consultas_recepcion_unica</name>
+        <type>UNIQUE (idrecepcion)</type>
+    </constraint>
+</table>

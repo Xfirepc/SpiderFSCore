@@ -23,6 +23,8 @@ namespace FacturaScripts\Core\Model\Base;
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Base\Utils;
 use FacturaScripts\Core\DataSrc\Almacenes;
+use FacturaScripts\Core\Lib\DocumentNumberingSchema;
+use FacturaScripts\Core\Lib\Inventory\Inventory;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Dinamic\Lib\BusinessDocumentCode;
 use FacturaScripts\Dinamic\Model\Almacen;
@@ -30,6 +32,7 @@ use FacturaScripts\Dinamic\Model\AttachedFileRelation;
 use FacturaScripts\Dinamic\Model\Divisa;
 use FacturaScripts\Dinamic\Model\Ejercicio;
 use FacturaScripts\Dinamic\Model\FormaPago;
+use FacturaScripts\Dinamic\Model\SecuenciaDocumento;
 use FacturaScripts\Dinamic\Model\Serie;
 
 /**
@@ -345,11 +348,24 @@ abstract class BusinessDocument extends ModelOnChangeClass
      */
     public function save(): bool
     {
-        // check accounting exercise
+        // Mantiene la preparación de almacén/ejercicio antes de la transacción
+        // propia, como en el guardado anterior a la optimización.
         if (empty($this->codejercicio)) {
             $this->setDate($this->fecha, $this->hora);
         }
+        if (empty($this->codigo) && DocumentNumberingSchema::available($this)) {
+            // Preparar el modelo antes de abrir una transacción propia evita DDL
+            // dentro del guardado. Se conservan las transacciones del llamador.
+            new SecuenciaDocumento();
+            return Inventory::model(self::$dataBase, $this, function (): bool {
+                return $this->saveWithNumber();
+            }, 'save');
+        }
+        return $this->saveWithNumber();
+    }
 
+    private function saveWithNumber(): bool
+    {
         // empty code?
         if (empty($this->codigo)) {
             BusinessDocumentCode::setNewCode($this);

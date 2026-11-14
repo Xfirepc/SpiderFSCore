@@ -1,0 +1,18 @@
+{% set context = fsc.clinicalContext() %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h2 class="h5">2. Responsable / tutor</h2>
+        <dl class="row">
+            {% for field, label in {'nombre':'Nombres y apellidos','documento':'C.I. / Pasaporte','telefono':'Teléfono / WhatsApp','correo':'Correo','direccion':'Dirección','ciudad':'Sector / Ciudad'} %}
+                <dt class="col-md-4">{{ label }}</dt><dd class="col-md-8">{{ fixHtml(context.tutor[field]|default('—')) }}</dd>
+            {% endfor %}
+        </dl>
+        <h2 class="h5 mt-4">3. Datos del paciente</h2>
+        <dl class="row">
+            {% for field, label in {'historia':'N.º HC','nombre':'Nombre','especie':'Especie','otraespecie':'Otra especie','raza':'Raza','sexo':'Sexo','nacimiento':'Fecha de nacimiento','edadestimada':'Edad estimada','color':'Color / señas','peso':'Peso (kg)','reproductiva':'Condición reproductiva','microchip':'Microchip','habitat':'Hábitat','indicacionesbano':'Indicaciones de baño'} %}
+                <dt class="col-md-4">{{ label }}</dt><dd class="col-md-8" style="white-space: pre-wrap; overflow-wrap: anywhere;">{{ fixHtml(context.patient[field]|default('—')) }}</dd>
+            {% endfor %}
+        </dl>
+        <p class="text-muted small mb-0">Datos conservados al registrar esta consulta.</p>
+    </div>
+</div>
