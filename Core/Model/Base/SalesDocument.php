@@ -20,6 +20,7 @@
 namespace FacturaScripts\Core\Model\Base;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Core\Lib\SalesDocumentAddress;
 use FacturaScripts\Core\Model\Cliente as CoreCliente;
 use FacturaScripts\Core\Model\Contacto as CoreContacto;
 use FacturaScripts\Core\Model\User;
@@ -371,7 +372,7 @@ abstract class SalesDocument extends TransformerDocument
         $this->ciudad = Tools::noHtml($this->ciudad);
         $this->codigoenv = Tools::noHtml($this->codigoenv);
         $this->codpostal = Tools::noHtml($this->codpostal);
-        $this->direccion = Tools::noHtml($this->direccion);
+        $this->direccion = SalesDocumentAddress::normalize($this->direccion);
         $this->nombrecliente = Tools::noHtml($this->nombrecliente);
         $this->numero2 = Tools::noHtml($this->numero2);
         $this->provincia = Tools::noHtml($this->provincia);
@@ -428,7 +429,7 @@ abstract class SalesDocument extends TransformerDocument
                     $this->ciudad = $contact->ciudad;
                     $this->codpais = $contact->codpais;
                     $this->codpostal = $contact->codpostal;
-                    $this->direccion = $contact->direccion;
+                    $this->direccion = SalesDocumentAddress::normalize($contact->direccion);
                     $this->provincia = $contact->provincia;
                     break;
                 }
@@ -486,7 +487,7 @@ abstract class SalesDocument extends TransformerDocument
         $this->codcliente = $subject->codcliente;
         $this->codpais = $subject->codpais;
         $this->codpostal = $subject->codpostal;
-        $this->direccion = $subject->direccion;
+        $this->direccion = SalesDocumentAddress::normalize($subject->direccion);
         $this->idcontactoenv = $subject->idcontacto;
         $this->idcontactofact = $subject->idcontacto;
         $this->nombrecliente = empty($subject->empresa) ? $subject->fullName() : $subject->empresa;
@@ -518,7 +519,7 @@ abstract class SalesDocument extends TransformerDocument
         $this->codpais = $billingAddress->codpais;
         $this->provincia = $billingAddress->provincia;
         $this->ciudad = $billingAddress->ciudad;
-        $this->direccion = $billingAddress->direccion;
+        $this->direccion = SalesDocumentAddress::normalize($billingAddress->direccion);
         $this->codpostal = $billingAddress->codpostal;
         $this->apartado = $billingAddress->apartado;
         $this->idcontactofact = $billingAddress->idcontacto;

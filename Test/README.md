@@ -85,3 +85,32 @@ de solo lectura, ausencia del padre y conservación de opciones. Cada interacci�
 debe producir una sola solicitud con la acción que le corresponde, sin consultar
 una tabla vacía. `TRACEABILITY_SOURCE` permite comparar con la carpeta anterior
 del plugin.
+
+
+## Direcciones largas en documentos de venta
+
+`Core/Lib/SalesDocumentAddress.php` limita la copia del documento a 100
+caracteres UTF-8 y convierte saltos de línea en espacios. `SalesDocument` lo
+aplica al seleccionar cliente/contacto, validar y cambiar el contacto de una
+factura existente. Las fichas originales del cliente y del contacto se conservan.
+Reaplicar esta personalización si se sustituye Core al actualizar FacturaScripts.
+
+SpiderFact utiliza esa copia en `direccionComprador` y construye el nodo XML
+como texto para admitir ampersands y caracteres acentuados. El XSD de factura
+admite hasta 300 caracteres; los 100 de la copia caben en el esquema. Para
+facturas antiguas sin copia se utiliza el contacto como respaldo, también limitado.
+No se amplían columnas ni se reparan documentos históricos.
+
+Prueba con ORM, MariaDB y generación XML reales, sin red externa, configuración
+de producción, firma ni envíos al SRI:
+
+```bash
+SB_DEMO_TEST_SALES_ADDRESS_ONLY=1 \
+SB_DEMO_TEST_PHP_IMAGE=spidercode/php-migration-audit:7.4-python \
+bash Plugins/SpiderBuilder/Test/run-demo-integration.sh
+```
+
+El fixture `Test/Core/SalesDocumentAddressMariaDb.php` cubre los límites,
+UTF-8, factura/albarán/pedido/presupuesto, cambio de contacto tras validar,
+asignación directa, conservación de las fichas y de importes USD, y validación
+completa del XML de factura con el XSD 1.0.0. No utiliza datos de las instancias.
