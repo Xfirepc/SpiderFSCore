@@ -197,8 +197,9 @@ class SalesLineHTML
         $line->orden = (int)$formData['orden_' . $id];
         $line->cantidad = (float)$formData['cantidad_' . $id];
         $line->coste = floatval($formData['coste_' . $id] ?? $line->coste);
-        $line->dtopor = (float)$formData['dtopor_' . $id];
-        $line->dtopor2 = (float)$formData['dtopor2_' . $id];
+        // Los campos de descuento deshabilitados no se envían en el formulario.
+        $line->dtopor = (float)($formData['dtopor_' . $id] ?? $line->dtopor);
+        $line->dtopor2 = (float)($formData['dtopor2_' . $id] ?? $line->dtopor2);
         $line->descripcion = $formData['descripcion_' . $id];
         $line->excepcioniva = $formData['excepcioniva_' . $id] ?? null;
         $line->irpf = (float)($formData['irpf_' . $id] ?? '0');
