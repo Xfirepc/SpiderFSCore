@@ -12,6 +12,7 @@ use FacturaScripts\Core\Model\Base\ModelOnChangeClass;
 use FacturaScripts\Core\Model\Base\ModelTrait;
 use FacturaScripts\Core\Model\FacturaCliente;
 use FacturaScripts\Core\Model\SecuenciaDocumento;
+use FacturaScripts\Plugins\SpiderFact\Model\SFRetencionCompra;
 
 /** Pruebas reales de numeración; solo MariaDB desechable y sin config.php. */
 if (getenv('NUMBERING_DISPOSABLE_DB') !== '1' || is_file(dirname(__DIR__, 2) . '/config.php')) {
@@ -350,6 +351,37 @@ function numberingCases(bool $migrated): array
     return $result;
 }
 
+function numberingWithholding(): void
+{
+    global $pdo;
+    numberingSeed([], 1, false);
+    numberingSql('CREATE TABLE settings (name varchar(50) PRIMARY KEY,properties text)');
+    numberingSql('CREATE TABLE sf_retenciones_compras (id int AUTO_INCREMENT PRIMARY KEY,idempresa int NOT NULL,'
+        . 'codserie varchar(10) NOT NULL,codejercicio varchar(4) NOT NULL,numero varchar(12) NOT NULL,'
+        . 'codigo varchar(20) NOT NULL,fecha datetime NOT NULL) ENGINE=InnoDB');
+    numberingSql("INSERT INTO sf_retenciones_compras (idempresa,codserie,codejercicio,numero,codigo,fecha)"
+        . " VALUES(1,'NV','2026','1','SFR2026NV1','2026-11-08'),(1,'NV','2026','3','SFR2026NV3','2026-11-09')");
+    numberingSql("UPDATE secuencias_documentos SET tipodoc='SFRetencionCompra',patron='SFR{EJE}{SERIE}{NUM}'");
+    numberingXml('sf_retenciones_compras');
+
+    $withholding = new SFRetencionCompra([
+        'idempresa' => 1, 'codserie' => 'NV', 'codejercicio' => '2026', 'fecha' => '11-11-2026',
+    ]);
+    BusinessDocumentCode::setNewCode($withholding);
+    numberingCheck($withholding->codigo === 'SFR2026NV4', 'La retención continúa la secuencia sin una columna de hora.');
+    $next = static function () use ($pdo): int {
+        return (int)$pdo->query('SELECT numero FROM secuencias_documentos WHERE idsecuencia=1')->fetchColumn();
+    };
+    numberingCheck($next() === 5, 'El siguiente número de retención queda reservado en la secuencia.');
+
+    numberingSql('UPDATE secuencias_documentos SET usarhuecos=1 WHERE idsecuencia=1');
+    BusinessDocumentCode::setNewCode($withholding);
+    numberingCheck($withholding->codigo === 'SFR2026NV2' && $withholding->fecha === '09-11-2026',
+        'La retención puede recuperar un hueco y su fecha aunque no tenga hora.');
+    numberingCheck($next() === 4, 'La recuperación del hueco conserva el próximo número después del máximo.');
+    numberingCheck(count(MiniLog::read('database', ['error', 'critical'])) === 0, 'La numeración de retenciones no genera errores SQL.');
+}
+
 $mode = $argv[1] ?? 'smoke';
 if ($mode === 'smoke') {
     numberingSeed([1, 3], 4, true);
@@ -368,6 +400,7 @@ if ($mode === 'equivalence') {
     if (getenv('NUMBERING_BASELINE') !== '1') {
         $result['indexed'] = numberingCases(true);
         numberingCheck($result['indexed'] === $result['fallback'], 'El acceso indexado conserva los resultados del acceso compatible.');
+        numberingWithholding();
     }
     echo json_encode(['checks' => $checks, 'cases' => $result]), PHP_EOL;
 }

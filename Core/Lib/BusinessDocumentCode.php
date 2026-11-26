@@ -163,7 +163,7 @@ class BusinessDocumentCode
                 $expectedNumber--;
                 $preCodejercicio = $preDoc->codejercicio;
                 $preDate = $preDoc->fecha;
-                $preHour = $preDoc->hora;
+                $preHour = $preDoc->hora ?? null;
             }
 
             if (empty($previous)) {
@@ -192,9 +192,12 @@ class BusinessDocumentCode
 
     protected static function getPrevious(SecuenciaDocumento $sequence, BusinessDocument $document): array
     {
-        // El constructor de documentos completos no interviene en esta lectura.
-        // El ORM proyecta solo los cuatro valores que utiliza getNewNumber().
-        $query = $document::table()->select('numero,codejercicio,fecha,hora')
+        // Las retenciones de compra y otros documentos pueden carecer de hora.
+        $fields = 'numero,codejercicio,fecha';
+        if (isset($document->getModelFields()['hora'])) {
+            $fields .= ',hora';
+        }
+        $query = $document::table()->select($fields)
             ->whereEq('codserie', $sequence->codserie)
             ->whereEq('idempresa', $sequence->idempresa);
         if ($sequence->codejercicio) {
